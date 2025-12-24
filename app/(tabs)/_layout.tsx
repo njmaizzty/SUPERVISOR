@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AIChatButton } from '@/components/AIChatButton';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AIFloatingButton } from '@/components/AIFloatingButton';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -68,8 +68,8 @@ export default function TabLayout() {
         />
       </Tabs>
       
-      {/* AI Floating Button */}
-      <AIFloatingButton hasRecommendations={true} recommendationCount={5} />
+      {/* AI Chat Floating Button */}
+      <AIChatButton showTooltip={true} />
     </View>
   );
 }

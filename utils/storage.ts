@@ -1,5 +1,6 @@
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 // Keys for secure storage
 const JWT_TOKEN_KEY = 'jwt_token';
@@ -13,8 +14,12 @@ export interface UserData {
   supervisorId: string;
 }
 
+// Helper to check if SecureStore is available (not on web)
+const isSecureStoreAvailable = Platform.OS !== 'web';
+
 /**
  * Secure storage utilities for authentication tokens and user data
+ * Uses SecureStore on native platforms and AsyncStorage on web
  */
 export class AuthStorage {
   /**
@@ -22,7 +27,11 @@ export class AuthStorage {
    */
   static async setToken(token: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync(JWT_TOKEN_KEY, token);
+      if (isSecureStoreAvailable) {
+        await SecureStore.setItemAsync(JWT_TOKEN_KEY, token);
+      } else {
+        await AsyncStorage.setItem(JWT_TOKEN_KEY, token);
+      }
     } catch (error) {
       console.error('Error storing JWT token:', error);
       throw new Error('Failed to store authentication token');
@@ -34,7 +43,11 @@ export class AuthStorage {
    */
   static async getToken(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(JWT_TOKEN_KEY);
+      if (isSecureStoreAvailable) {
+        return await SecureStore.getItemAsync(JWT_TOKEN_KEY);
+      } else {
+        return await AsyncStorage.getItem(JWT_TOKEN_KEY);
+      }
     } catch (error) {
       console.error('Error retrieving JWT token:', error);
       return null;
@@ -46,7 +59,11 @@ export class AuthStorage {
    */
   static async setRefreshToken(token: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+      if (isSecureStoreAvailable) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+      } else {
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+      }
     } catch (error) {
       console.error('Error storing refresh token:', error);
       throw new Error('Failed to store refresh token');
@@ -58,7 +75,11 @@ export class AuthStorage {
    */
   static async getRefreshToken(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+      if (isSecureStoreAvailable) {
+        return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+      } else {
+        return await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+      }
     } catch (error) {
       console.error('Error retrieving refresh token:', error);
       return null;
@@ -96,11 +117,19 @@ export class AuthStorage {
    */
   static async clearAll(): Promise<void> {
     try {
-      await Promise.all([
-        SecureStore.deleteItemAsync(JWT_TOKEN_KEY),
-        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
-        AsyncStorage.removeItem(USER_DATA_KEY),
-      ]);
+      if (isSecureStoreAvailable) {
+        await Promise.all([
+          SecureStore.deleteItemAsync(JWT_TOKEN_KEY),
+          SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
+          AsyncStorage.removeItem(USER_DATA_KEY),
+        ]);
+      } else {
+        await Promise.all([
+          AsyncStorage.removeItem(JWT_TOKEN_KEY),
+          AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
+          AsyncStorage.removeItem(USER_DATA_KEY),
+        ]);
+      }
     } catch (error) {
       console.error('Error clearing authentication data:', error);
       throw new Error('Failed to clear authentication data');

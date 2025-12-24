@@ -1,19 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface ChatMessage {
   id: string;
@@ -38,18 +38,24 @@ export default function AIChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
 
   const quickQuestions = [
-    "Which worker is best for pruning tasks?",
-    "When is the next maintenance due?",
-    "How can I optimize irrigation?",
-    "Show me today's priorities",
+    "Who should I assign for harvesting?",
+    "What are today's priorities?",
+    "Show equipment maintenance",
+    "What's the weather forecast?",
+    "Help me create a task",
+    "Show performance report",
   ];
 
-  const aiResponses = {
-    "worker": "Based on performance data, John Smith has the highest efficiency for pruning tasks (23% above average). He's currently available and has completed 15 similar tasks this month with excellent results.",
-    "maintenance": "Your John Deere Tractor has maintenance due in 3 days (Dec 5th). The Fertilizer Spreader is overdue by 2 days. I recommend scheduling the tractor service immediately to prevent downtime.",
-    "irrigation": "Weather forecast shows 40% rain chance next week. I suggest reducing Block B irrigation by 15% and adjusting the schedule to early morning (5-7 AM) for optimal water absorption.",
-    "priorities": "Today's priorities: 1) Complete pest inspection in Block A (high risk detected), 2) Assign John to tree pruning, 3) Schedule tractor maintenance, 4) Review worker schedules for next week.",
-    "default": "I understand you're asking about farm operations. Could you be more specific? I can help with worker assignments, equipment maintenance, scheduling, or provide insights about your farm's performance."
+  const aiResponses: Record<string, string> = {
+    "worker": "Based on performance data, **Ahmad** has the highest efficiency for harvesting tasks (92% match score). He's currently available with 5 years of experience. For pruning, I recommend **Maya** with an 88% match score.",
+    "maintenance": "🔧 **Maintenance Summary:**\n\n• John Deere Tractor - Due in 3 days\n• Fertilizer Spreader - Overdue by 2 days (⚠️ Urgent)\n• Irrigation Controller - Next service in 2 weeks\n\nI recommend scheduling the spreader service immediately to prevent crop delays.",
+    "irrigation": "💧 **Irrigation Optimization:**\n\nWeather forecast shows 40% rain chance next week. I suggest:\n\n1. Reduce Block B irrigation by 15%\n2. Adjust schedule to 5-7 AM for optimal absorption\n3. Monitor soil moisture sensors in Block A\n\nEstimated water savings: 2,500 gallons/week",
+    "priorities": "📋 **Today's Priorities:**\n\n1. 🔴 Complete pest inspection in Block A (high risk)\n2. 🟠 Assign Ahmad to harvesting - Block C\n3. 🟡 Schedule tractor maintenance\n4. 🟢 Review worker schedules for next week\n\nWould you like me to create tasks for any of these?",
+    "task": "I can help you create and assign tasks! Based on current workload:\n\n• **Harvesting**: Ahmad & Faiz are available\n• **Pruning**: Maya is recommended (88% match)\n• **Spraying**: Siti is experienced but currently busy\n\nWhat type of task would you like to create?",
+    "weather": "🌤️ **Weather Forecast (Next 7 Days):**\n\n• Today: Sunny, 28°C\n• Tomorrow: Partly cloudy, 27°C\n• Wed-Thu: 40% chance of rain\n• Fri-Sun: Clear skies, 29-31°C\n\nRecommendation: Plan outdoor tasks for Friday onwards.",
+    "performance": "📊 **Farm Performance Summary:**\n\n• Task completion rate: 87% (+5% from last month)\n• Worker productivity: 92% average\n• Equipment uptime: 94%\n• Pending tasks: 12\n\nTop performer this week: Ahmad (15 tasks completed)",
+    "help": "I can help you with:\n\n🧑‍🌾 **Workers** - Find best matches, check availability\n📋 **Tasks** - Create, assign, and track tasks\n🚜 **Equipment** - Maintenance schedules, status\n🌱 **Areas** - Block management, crop status\n📊 **Reports** - Performance analytics\n🌤️ **Weather** - Forecasts and recommendations\n\nJust ask me anything!",
+    "default": "I'm your AI Farm Assistant! I can help with:\n\n• Worker assignments & recommendations\n• Task creation & scheduling\n• Equipment maintenance alerts\n• Weather-based planning\n• Performance insights\n\nTry asking: \"Who should I assign for harvesting?\" or \"What are today's priorities?\""
   };
 
   useEffect(() => {
@@ -65,14 +71,22 @@ export default function AIChatScreen() {
   const getAIResponse = (userMessage: string): string => {
     const message = userMessage.toLowerCase();
     
-    if (message.includes('worker') || message.includes('assign') || message.includes('prune')) {
+    if (message.includes('worker') || message.includes('assign') || message.includes('who') || message.includes('best')) {
       return aiResponses.worker;
-    } else if (message.includes('maintenance') || message.includes('service') || message.includes('repair')) {
+    } else if (message.includes('maintenance') || message.includes('service') || message.includes('repair') || message.includes('equipment')) {
       return aiResponses.maintenance;
     } else if (message.includes('irrigation') || message.includes('water') || message.includes('optimize')) {
       return aiResponses.irrigation;
-    } else if (message.includes('priority') || message.includes('today') || message.includes('urgent')) {
+    } else if (message.includes('priority') || message.includes('today') || message.includes('urgent') || message.includes('important')) {
       return aiResponses.priorities;
+    } else if (message.includes('task') || message.includes('create') || message.includes('schedule')) {
+      return aiResponses.task;
+    } else if (message.includes('weather') || message.includes('rain') || message.includes('forecast')) {
+      return aiResponses.weather;
+    } else if (message.includes('performance') || message.includes('report') || message.includes('analytics') || message.includes('stats')) {
+      return aiResponses.performance;
+    } else if (message.includes('help') || message.includes('what can you') || message.includes('how')) {
+      return aiResponses.help;
     } else {
       return aiResponses.default;
     }
