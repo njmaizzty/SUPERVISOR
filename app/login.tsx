@@ -1,26 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  ActivityIndicator,
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/theme';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+
+const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -35,29 +38,10 @@ export default function LoginScreen() {
     setIsFormValid(username.trim().length > 0 && password.length >= 6);
   }, [username, password]);
 
-  useEffect(() => {
-    if (error) {
-      clearError();
-    }
-  }, [username, password]);
-
   const handleLogin = async () => {
-    if (!isFormValid) {
-      Alert.alert(
-        'Invalid Input',
-        'Please enter valid username and password (minimum 6 characters)'
-      );
-      return;
-    }
-
-    const result = await login({
-      username: username.trim(),
-      password,
-    });
-
-    if (result.success) {
-      router.replace('/(tabs)');
-    } else {
+    if (!isFormValid) return;
+    const result = await login({ username: username.trim(), password });
+    if (!result.success) {
       Alert.alert('Login Failed', result.message || 'Invalid credentials');
     }
   };
@@ -68,109 +52,92 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="dark" />
-
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      
+      <View style={styles.circleDecorator} />
+      
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
 
-          {/* Header */}
+          {/* Header Section */}
           <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => router.push('/')}
+            >
+              <IconSymbol name="arrow.left" size={20} color="#2E7D32" />
+            </TouchableOpacity>
+            
+            <View style={styles.brandContainer}>
+              {/* Profile Icon at the Top */}
+              <View style={styles.profileCircle}>
+                <IconSymbol name="person.crop.circle.fill" size={80} color="#2E7D32" />
+              </View>
 
-            {/* Top Row */}
-            <View style={styles.headerRow}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.push('/')}
-              >
-                <IconSymbol name="chevron.left" size={24} color="#2E7D32" />
-              </TouchableOpacity>
-
-              <Text style={styles.title}>Welcome Back</Text>
-
-              {/* Spacer for centering */}
-              <View style={styles.headerSpacer} />
-            </View>
-
-            <Text style={styles.subtitle}>Sign in to manage your tasks</Text>
-
-            {/* Profile Icon */}
-            <View style={styles.profileIconContainer}>
-              <IconSymbol name="person.fill" size={48} color="#2E7D32" />
+              <Text style={styles.title}>Supervisor App</Text>
+              <Text style={styles.subtitle}>Login</Text>
             </View>
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  username.length > 0 && styles.inputFocused,
-                ]}
-                placeholder="Enter your username"
-                placeholderTextColor={Colors.light.tabIconDefault}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  password.length > 0 && styles.inputFocused,
-                ]}
-                placeholder="Enter your password"
-                placeholderTextColor={Colors.light.tabIconDefault}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                onSubmitEditing={handleLogin}
-                editable={!isLoading}
-              />
-            </View>
-
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+          {/* Form Card */}
+          <View style={styles.card}>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, focusedField === 'user' && styles.labelActive]}>Username</Text>
+              <View style={[styles.inputWrapper, focusedField === 'user' && styles.inputWrapperActive]}>
+                <IconSymbol name="person.fill" size={18} color={focusedField === 'user' ? '#2E7D32' : '#999'} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter username"
+                  placeholderTextColor="#999"
+                  onFocus={() => setFocusedField('user')}
+                  onBlur={() => setFocusedField(null)}
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                />
               </View>
-            )}
+            </View>
 
-            <TouchableOpacity
-              style={[
-                styles.loginButton,
-                !isFormValid && styles.loginButtonDisabled,
-              ]}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, focusedField === 'pass' && styles.labelActive]}>Password</Text>
+              <View style={[styles.inputWrapper, focusedField === 'pass' && styles.inputWrapperActive]}>
+                <IconSymbol name="lock.fill" size={18} color={focusedField === 'pass' ? '#2E7D32' : '#999'} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter password"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  onFocus={() => setFocusedField('pass')}
+                  onBlur={() => setFocusedField(null)}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              style={[styles.loginButton, !isFormValid && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={!isFormValid || isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.loginButtonText}>Log In</Text>
+                <Text style={styles.loginButtonText}>Sign In</Text>
               )}
             </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.forgotBtn}>
+              <Text style={styles.forgotText}>Forgot your password?</Text>
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.bottomLinks}>
-              <TouchableOpacity>
-                <Text style={styles.forgotPasswordText}>
-                  Forgot Password?
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.signupLinkContainer}>
-                <Text style={styles.signupLinkText}>
-                  Don't have an account?
-                </Text>
-                <TouchableOpacity onPress={() => router.push('/signup')}>
-                  <Text style={styles.signupLink}> Create Account</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Create new account?</Text>
+            <TouchableOpacity onPress={() => router.push('/signup')}>
+              <Text style={styles.signupText}> Sign up</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -181,127 +148,156 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAF8',
+  },
+  circleDecorator: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#E8F5E8',
+    zIndex: 0,
   },
   scrollContainer: {
-    padding: 24,
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   content: {
-    maxWidth: 400,
+    flex: 1,
+    maxWidth: 450,
     alignSelf: 'center',
     width: '100%',
   },
   header: {
-    marginBottom: 28,
-  },
-
-  /* Header alignment */
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 32,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E8F5E8',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
-  headerSpacer: {
-    width: 44,
+  brandContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  profileCircle: {
+    marginBottom: 16,
+    // Adds a soft glow/shadow behind the profile icon
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   title: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1B5E20',
+    letterSpacing: -0.5,
   },
-
-  /* 🔼 Subtitle moved UP */
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
     color: '#666',
-    textAlign: 'center',
-    marginTop: 2,        // was 6
-    marginBottom: 6,
+    marginTop: 2,
   },
-
-  profileIconContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#E8F5E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginTop: 14,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.08,
+    shadowRadius: 30,
+    elevation: 10,
   },
-
-  form: {
-    width: '100%',
-  },
-  inputContainer: {
-    marginBottom: 20,
+  inputGroup: {
+    marginBottom: 18,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#444',
     marginBottom: 8,
+    marginLeft: 4,
   },
-  input: {
-    height: 52,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+  labelActive: {
+    color: '#2E7D32',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
-  inputFocused: {
+  inputWrapperActive: {
     borderColor: '#2E7D32',
     backgroundColor: '#FFFFFF',
   },
-  errorContainer: {
-    backgroundColor: '#FFEBEE',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#D32F2F',
+  input: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#333',
   },
   loginButton: {
-    height: 52,
+    height: 56,
     backgroundColor: '#2E7D32',
-    borderRadius: 12,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 12,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
   loginButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: '#A5D6A7',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   loginButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
   },
-  bottomLinks: {
-    marginTop: 28,
-    alignItems: 'center',
+  forgotBtn: {
+    marginTop: 16,
+    alignSelf: 'center',
   },
-  forgotPasswordText: {
-    color: '#2E7D32',
-    marginBottom: 12,
-  },
-  signupLinkContainer: {
-    flexDirection: 'row',
-  },
-  signupLinkText: {
+  forgotText: {
     color: '#666',
+    fontSize: 14,
   },
-  signupLink: {
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 32,
+  },
+  footerText: {
+    color: '#666',
+    fontSize: 15,
+  },
+  signupText: {
     color: '#2E7D32',
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

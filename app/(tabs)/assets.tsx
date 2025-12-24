@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-  Dimensions,
-  Alert,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  FlatList,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-// Mock data for assets
+// Mock data for assets - Locations strictly changed to Block A, B, C, or D
 const mockAssets = [
   {
     id: 'asset1',
@@ -28,7 +28,7 @@ const mockAssets = [
     year: 2022,
     serialNumber: 'JD5075E-2022-001',
     status: 'Active',
-    location: 'Equipment Yard A',
+    location: 'Block A', // Changed from Equipment Yard A
     purchaseDate: '2022-03-15',
     purchasePrice: 45000,
     currentValue: 38000,
@@ -55,7 +55,7 @@ const mockAssets = [
     year: 2024,
     serialNumber: 'AT-ICP-2024-002',
     status: 'Active',
-    location: 'Block B Control Room',
+    location: 'Block B', // Changed from Control Room
     purchaseDate: '2024-01-20',
     purchasePrice: 8500,
     currentValue: 7800,
@@ -82,7 +82,7 @@ const mockAssets = [
     year: 2021,
     serialNumber: 'FS-XL-2021-003',
     status: 'Maintenance Required',
-    location: 'Storage Shed C',
+    location: 'Block C', // Changed from Storage Shed C
     purchaseDate: '2021-05-10',
     purchasePrice: 12000,
     currentValue: 8500,
@@ -109,7 +109,7 @@ const mockAssets = [
     year: 2023,
     serialNumber: 'ST-SES-2023-004',
     status: 'Active',
-    location: 'Block A Storage',
+    location: 'Block A', // Changed from Block A Storage
     purchaseDate: '2023-07-12',
     purchasePrice: 15500,
     currentValue: 13200,
@@ -136,7 +136,7 @@ const mockAssets = [
     year: 2024,
     serialNumber: 'SL-STK-2024-005',
     status: 'Out of Service',
-    location: 'Laboratory',
+    location: 'Block D', // Changed from Laboratory
     purchaseDate: '2024-02-28',
     purchasePrice: 3200,
     currentValue: 2900,
@@ -161,14 +161,16 @@ export default function AssetsScreen() {
   const [assets, setAssets] = useState(mockAssets);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+  const [viewMode, setViewMode] = useState('list');
 
   const filters = ['All', 'Active', 'Maintenance Required', 'Out of Service'];
 
   const filteredAssets = assets.filter(asset => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         asset.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         asset.manufacturer.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = 
+      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.manufacturer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'All' || asset.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
@@ -210,9 +212,9 @@ export default function AssetsScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'MYR',
       minimumFractionDigits: 0,
     }).format(amount);
   };
@@ -299,7 +301,6 @@ export default function AssetsScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Assets</Text>
@@ -331,19 +332,17 @@ export default function AssetsScreen() {
           </View>
         </View>
 
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <IconSymbol name="house.fill" size={20} color="#666666" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search assets by name, category, or manufacturer..."
+            placeholder="Search assets"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#999999"
           />
         </View>
 
-        {/* Filter Tabs */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
@@ -370,7 +369,6 @@ export default function AssetsScreen() {
         </ScrollView>
       </View>
 
-      {/* Assets List */}
       <FlatList
         data={filteredAssets}
         renderItem={renderAssetCard}
