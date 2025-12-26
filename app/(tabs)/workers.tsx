@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-  Dimensions,
-  Alert,
-  Linking,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  FlatList,
+  Linking,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -24,15 +24,15 @@ const mockWorkers = [
     id: 'worker1',
     name: 'John Smith',
     email: 'john.smith@farm.com',
-    phone: '+1 (555) 123-4567',
-    position: 'Senior Farm Worker',
-    department: 'Field Operations',
+    phone: '+60 12-176 4532',
+    position: 'Field Worker',
+    department: 'Plantation Operations',
     status: 'Active',
     availability: 'Available',
     hoursWorked: 42,
     tasksCompleted: 15,
     currentTasks: 2,
-    skills: ['Pruning', 'Irrigation', 'Pest Control'],
+    skills: ['Pruning', 'Harvesting', 'Weeding'],
     joinDate: '2023-01-15',
     lastActive: '2 hours ago',
     rating: 4.8,
@@ -42,15 +42,15 @@ const mockWorkers = [
     id: 'worker2',
     name: 'Maria Garcia',
     email: 'maria.garcia@farm.com',
-    phone: '+1 (555) 234-5678',
-    position: 'Irrigation Specialist',
-    department: 'Water Management',
+    phone: '+60 16-893 625',
+    position: 'Field Worker',
+    department: 'Plantation Operation',
     status: 'Active',
     availability: 'Busy',
     hoursWorked: 38,
     tasksCompleted: 12,
     currentTasks: 3,
-    skills: ['Irrigation Systems', 'Water Testing', 'Equipment Maintenance'],
+    skills: ['Harvesting', 'Spraying'],
     joinDate: '2023-03-20',
     lastActive: '30 minutes ago',
     rating: 4.9,
@@ -60,33 +60,33 @@ const mockWorkers = [
     id: 'worker3',
     name: 'Carlos Rodriguez',
     email: 'carlos.rodriguez@farm.com',
-    phone: '+1 (555) 345-6789',
-    position: 'Equipment Operator',
-    department: 'Machinery',
+    phone: '+60 17-577 145',
+    position: 'Field Worker',
+    department: 'Plantation Operation',
     status: 'Active',
     availability: 'Available',
     hoursWorked: 45,
     tasksCompleted: 18,
     currentTasks: 1,
-    skills: ['Heavy Machinery', 'Fertilizer Application', 'Soil Preparation'],
+    skills: ['Pest & Disease', 'Manuring'],
     joinDate: '2022-11-10',
     lastActive: '1 hour ago',
     rating: 4.7,
-    location: 'Equipment Yard',
+    location: 'Block A',
   },
   {
     id: 'worker4',
     name: 'Ana Martinez',
     email: 'ana.martinez@farm.com',
-    phone: '+1 (555) 456-7890',
-    position: 'Pest Control Specialist',
-    department: 'Plant Health',
+    phone: '+60 16-761 718',
+    position: 'Field Worker',
+    department: 'Plantation Operation',
     status: 'Active',
     availability: 'Available',
     hoursWorked: 40,
     tasksCompleted: 14,
     currentTasks: 2,
-    skills: ['Pest Identification', 'Organic Treatments', 'Crop Monitoring'],
+    skills: ['Weeding', 'Harvesting', 'Pruning'],
     joinDate: '2023-05-08',
     lastActive: '15 minutes ago',
     rating: 4.6,
@@ -96,15 +96,15 @@ const mockWorkers = [
     id: 'worker5',
     name: 'David Wilson',
     email: 'david.wilson@farm.com',
-    phone: '+1 (555) 567-8901',
-    position: 'Soil Analyst',
-    department: 'Quality Control',
+    phone: '+60 15-142 345',
+    position: 'Field Worker',
+    department: 'Plantation Operation',
     status: 'On Leave',
     availability: 'Unavailable',
     hoursWorked: 0,
     tasksCompleted: 8,
     currentTasks: 0,
-    skills: ['Soil Testing', 'Nutrient Analysis', 'Data Collection'],
+    skills: ['Mechanisation Fleet', 'Weeding'],
     joinDate: '2023-07-12',
     lastActive: '3 days ago',
     rating: 4.5,
@@ -295,10 +295,12 @@ export default function WorkersScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <IconSymbol name="house.fill" size={20} color="#666666" />
+          <IconSymbol name="house.fill" 
+          size={20} 
+          color="#666666" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search workers by name, position, or department..."
+            placeholder="Search workers by name"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#999999"

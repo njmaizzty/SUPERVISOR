@@ -389,7 +389,7 @@ export default function TasksScreen() {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search tasks, workers, or areas..."
+            placeholder="Search tasks, workers, or areas"
             placeholderTextColor="#999999"
             value={searchQuery}
             onChangeText={setSearchQuery}
