@@ -1,4 +1,5 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
@@ -671,100 +672,77 @@ export default function TasksScreen() {
             )}
 
             {/* Start & End Date - Quick Date Buttons */}
-            <Text style={styles.label}>Start Date</Text>
-            <View style={styles.dateButtonsRow}>
-              <TouchableOpacity 
-                style={[styles.dateQuickButton, startDate && isToday(startDate) && styles.dateQuickButtonActive]}
-                onPress={() => setStartDate(new Date())}
-              >
-                <Text style={[styles.dateQuickButtonText, startDate && isToday(startDate) && styles.dateQuickButtonTextActive]}>Today</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.dateQuickButton, startDate && isTomorrow(startDate) && styles.dateQuickButtonActive]}
-                onPress={() => {
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  setStartDate(tomorrow);
-                }}
-              >
-                <Text style={[styles.dateQuickButtonText, startDate && isTomorrow(startDate) && styles.dateQuickButtonTextActive]}>Tomorrow</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.dateQuickButton, startDate && isNextWeek(startDate) && styles.dateQuickButtonActive]}
-                onPress={() => {
-                  const nextWeek = new Date();
-                  nextWeek.setDate(nextWeek.getDate() + 7);
-                  setStartDate(nextWeek);
-                }}
-              >
-                <Text style={[styles.dateQuickButtonText, startDate && isNextWeek(startDate) && styles.dateQuickButtonTextActive]}>Next Week</Text>
-              </TouchableOpacity>
-            </View>
-            {/* Display selected start date */}
-            {startDate && (
-              <View style={styles.selectedDateDisplay}>
-                <IconSymbol name="calendar.fill" size={16} color="#2E7D32" />
-                <Text style={styles.selectedDateText}>{startDate.toDateString()}</Text>
-              </View>
-            )}
+            {/* Start Date */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Start Date</Text>
 
-            <Text style={styles.label}>End Date</Text>
-            <View style={styles.dateButtonsRow}>
-              {/* Same Day */}
-              <TouchableOpacity
-                style={[styles.dateQuickButton, activeEndDate === 'sameDay' && styles.dateQuickButtonActive]}
-                onPress={() => {setEndDate(startDate || new Date());
-                setActiveEndDate('sameDay');
-             }}
-            >
-            <Text style={[styles.dateQuickButtonText,activeEndDate === 'sameDay' && styles.dateQuickButtonTextActive]}>
-            Same Day
-            </Text>
-          </TouchableOpacity>
+  <TouchableOpacity
+    style={styles.dateInputBox}
+    onPress={() => setShowStartDatePicker(true)}
+    activeOpacity={0.8}
+  >
+    <Text
+      style={[
+        styles.dateInputText,
+        { color: startDate ? '#333' : '#999' },
+      ]}
+    >
+      {startDate
+        ? startDate.toISOString().split('T')[0]
+        : 'Tap to select start date'}
+    </Text>
+  </TouchableOpacity>
 
-            {/* +3 Days */}
-              <TouchableOpacity
-                style={[styles.dateQuickButton,activeEndDate === 'plus3' && styles.dateQuickButtonActive]}
-                  onPress={() => {
-                    const date = startDate || new Date();
-                    const newDate = new Date(date);
-                    newDate.setDate(newDate.getDate() + 3);
-                    setEndDate(newDate);
-                    setActiveEndDate('plus3');
-                }}
-              >
-              <Text
-                style={[
-                styles.dateQuickButtonText,activeEndDate === 'plus3' && styles.dateQuickButtonTextActive]}>
-              +3 Days
-              </Text>
-                </TouchableOpacity>
+  {showStartDatePicker && (
+    <DateTimePicker
+      value={startDate || new Date()}
+      mode="date"
+      display="default"
+      onChange={(event, date) => {
+        setShowStartDatePicker(false);
+        if (date) {
+          setStartDate(date);
+        }
+      }}
+    />
+  )}
+</View>
 
-            {/* +1 Week */}
-              <TouchableOpacity
-                style={[styles.dateQuickButton,activeEndDate === 'plus7' && styles.dateQuickButtonActive]}
-                  onPress={() => {
-                    const date = startDate || new Date();
-                    const newDate = new Date(date);
-                    newDate.setDate(newDate.getDate() + 7);
-                    setEndDate(newDate);
-                    setActiveEndDate('plus7');
-                }}
-              >
-              <Text
-                style={[styles.dateQuickButtonText,activeEndDate === 'plus7' && styles.dateQuickButtonTextActive]}>
-             +1 Week
-              </Text>
-                </TouchableOpacity>
-                  </View>
+{/* End Date */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>End Date</Text>
 
-                  {/* Display Selected End Date */}
-                  {endDate && (
-                    <View style={styles.selectedDateDisplay}>
-                      <IconSymbol name="calendar.fill" size={16} color="#2E7D32" />
-                      <Text style={styles.selectedDateText}>{endDate.toDateString()}</Text>
-                    </View>
-                  )}
+  <TouchableOpacity
+    style={styles.dateInputBox}
+    onPress={() => setShowEndDatePicker(true)}
+    activeOpacity={0.8}
+  >
+    <Text
+      style={[
+        styles.dateInputText,
+        { color: endDate ? '#333' : '#999' },
+      ]}
+    >
+      {endDate
+        ? endDate.toISOString().split('T')[0]
+        : 'Tap to select end date'}
+    </Text>
+  </TouchableOpacity>
+
+  {showEndDatePicker && (
+    <DateTimePicker
+      value={endDate || startDate || new Date()}
+      mode="date"
+      display="default"
+      onChange={(event, date) => {
+        setShowEndDatePicker(false);
+        if (date) {
+          setEndDate(date);
+        }
+      }}
+    />
+  )}
+</View>
 
             {/* Area / Block */}
             <Text style={styles.label}>Area / Block</Text>
@@ -1596,4 +1574,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+ dateInputBox: {
+  paddingVertical: 14,
+  paddingHorizontal: 12,
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+dateInputText: {
+  fontSize: 15,
+  fontWeight: '500',
+},
+inputGroup: {
+  marginBottom: 16,
+},
 });

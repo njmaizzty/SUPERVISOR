@@ -1,19 +1,26 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+
+// Arrays for dropdown selection
+const BLOCK_NAMES = Array.from({ length: 26 }, (_, i) =>
+  String.fromCharCode(65 + i)
+);
+const BLOCK_NUMBERS = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
 
 export default function CreateBlockScreen() {
   const router = useRouter();
@@ -23,20 +30,10 @@ export default function CreateBlockScreen() {
   const [blockData, setBlockData] = useState<any>({
     blockName: '',
     blockNumber: '',
-    phase: parsedPhase.phaseName || '',
+    phaseName: parsedPhase.phaseName || '',
+    phaseNumber: parsedPhase.phaseNumber || '',
     areaHectare: '',
     areaAcre: '',
-    treesPerHectare: '',
-    totalTrees: '',
-    palmVariety: '',
-    plantingDate: '',
-    palmAge: '',
-    status: '',
-    estimatedYield: '',
-    soilType: '',
-    drainage: '',
-    slope: '',
-    accessibility: '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +43,6 @@ export default function CreateBlockScreen() {
   };
 
   const handleCreateBlock = () => {
-    // Check if any field is empty
     const emptyFields = Object.entries(blockData)
       .filter(([_, value]) => !value || String(value).trim() === '')
       .map(([key]) => key);
@@ -71,15 +67,6 @@ export default function CreateBlockScreen() {
       });
     }, 1000);
   };
-
-  const numericFields = [
-    'areaHectare',
-    'areaAcre',
-    'treesPerHectare',
-    'totalTrees',
-    'palmAge',
-    'estimatedYield',
-  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -108,36 +95,107 @@ export default function CreateBlockScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.form}>
-            {[
-              { label: 'Block Name', field: 'blockName', placeholder: 'Block A' },
-              { label: 'Block Number', field: 'blockNumber', placeholder: '1' },
-              { label: 'Phase', field: 'phase', placeholder: parsedPhase.phaseName || '' },
-              { label: 'Area (hectare)', field: 'areaHectare', placeholder: '5' },
-              { label: 'Area (acre)', field: 'areaAcre', placeholder: '12.35' },
-              { label: 'Trees per Hectare', field: 'treesPerHectare', placeholder: '143' },
-              { label: 'Total Trees', field: 'totalTrees', placeholder: '715' },
-              { label: 'Palm Variety', field: 'palmVariety', placeholder: 'Dura' },
-              { label: 'Planting Date', field: 'plantingDate', placeholder: 'YYYY-MM-DD' },
-              { label: 'Palm Age (years)', field: 'palmAge', placeholder: '3' },
-              { label: 'Status', field: 'status', placeholder: 'Active' },
-              { label: 'Estimated Yield (kg/ha)', field: 'estimatedYield', placeholder: '2500' },
-              { label: 'Soil Type', field: 'soilType', placeholder: 'Loamy' },
-              { label: 'Drainage', field: 'drainage', placeholder: 'Good' },
-              { label: 'Slope', field: 'slope', placeholder: '5%' },
-              { label: 'Accessibility', field: 'accessibility', placeholder: 'Easy' },
-            ].map((item) => (
-              <View key={item.field} style={styles.inputGroup}>
-                <Text style={styles.label}>{item.label}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={item.placeholder}
-                  value={blockData[item.field]}
-                  onChangeText={(text) => handleInputChange(item.field, text)}
-                  keyboardType={numericFields.includes(item.field) ? 'numeric' : 'default'}
-                  placeholderTextColor="#999999"
-                />
-              </View>
-            ))}
+
+{/* BLOCK NAME (Scrollable Picker) */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Block Name</Text>
+
+  {/* Selected value box */}
+  <View style={styles.selectedBox}>
+    <Text style={styles.selectedBoxText}>
+      {blockData.blockName
+        ? `Selected Block: ${blockData.blockName}`
+        : 'Please select a block name'}
+    </Text>
+  </View>
+
+  {/* Scrollable Picker */}
+  <View style={styles.pickerContainerLarge}>
+    <Picker
+      selectedValue={blockData.blockName}
+      onValueChange={(value) => handleInputChange('blockName', value)}
+      style={{ color: '#000', fontSize: 16, height: 180 }} // <- ensures selected value is black
+  itemStyle={{ color: '#000', fontSize: 16 }}          // <- ensures all items are black
+>
+      <Picker.Item label="" value="" />
+      {BLOCK_NAMES.map((name) => (
+        <Picker.Item key={name} label={name} value={name} />
+      ))}
+    </Picker>
+  </View>
+</View>
+
+{/* BLOCK NUMBER (Scrollable Picker) */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Block Number</Text>
+
+  {/* Selected value box */}
+  <View style={styles.selectedBox}>
+    <Text style={styles.selectedBoxText}>
+      {blockData.blockNumber
+        ? `Selected Number: ${blockData.blockNumber}`
+        : 'Please select a block number'}
+    </Text>
+  </View>
+
+  {/* Scrollable Picker */}
+  <View style={styles.pickerContainerLarge}>
+    <Picker
+      selectedValue={blockData.blockNumber}
+      onValueChange={(value) => handleInputChange('blockNumber', value)}
+      style={{ color: '#000', fontSize: 16, height: 180 }}
+  itemStyle={{ color: '#000', fontSize: 16 }}
+>
+      <Picker.Item label="" value="" />
+      {BLOCK_NUMBERS.map((num) => (
+        <Picker.Item key={num} label={num} value={num} />
+      ))}
+    </Picker>
+  </View>
+</View>
+
+            {/* PHASE NAME */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phase Name</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: '#F0F0F0' }]}
+                value={blockData.phaseName}
+                editable={false}
+              />
+            </View>
+
+            {/* PHASE NUMBER */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phase Number</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: '#F0F0F0' }]}
+                value={blockData.phaseNumber}
+                editable={false}
+              />
+            </View>
+
+            {/* AREA HECTARE */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Area (hectare)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={blockData.areaHectare}
+                onChangeText={(text) => handleInputChange('areaHectare', text)}
+              />
+            </View>
+
+            {/* AREA ACRE */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Area (acre)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={blockData.areaAcre}
+                onChangeText={(text) => handleInputChange('areaAcre', text)}
+              />
+            </View>
+
           </View>
         </ScrollView>
 
@@ -199,4 +257,43 @@ const styles = StyleSheet.create({
   submitButton: { height: 52, backgroundColor: '#2E7D32', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   submitButtonDisabled: { backgroundColor: '#CCCCCC' },
   submitButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+
+  pickerContainer: {
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+},
+pickerContainerLarge: {
+  borderWidth: 2,
+  borderColor: '#2E7D32',
+  borderRadius: 12,
+  backgroundColor: '#FFFFFF',
+  height: 180,   // important for scrollable
+  overflow: 'hidden',
+  // remove justifyContent: 'center'
+},
+
+picker: {
+  color: '#000',
+  fontSize: 16,
+  height: '100%', // ensures selected text is visible
+},
+
+selectedBox: {
+  padding: 12,
+  borderRadius: 10,
+  backgroundColor: '#E8F5E9',
+  borderWidth: 1,
+  borderColor: '#2E7D32',
+  marginBottom: 8,
+},
+
+selectedBoxText: {
+  fontSize: 15,
+  fontWeight: '600',
+  color: '#2E7D32',
+},
+
 });

@@ -1,3 +1,5 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -18,6 +20,8 @@ export default function CreateFormScreen() {
   const { type } = useLocalSearchParams();
   const [formData, setFormData] = useState<any>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [activeDateField, setActiveDateField] = useState<'purchaseDate' | 'establishedDate' | null>(null);
 
   useEffect(() => {
   if (type === 'task') {
@@ -36,21 +40,26 @@ export default function CreateFormScreen() {
       name: '',
       email: '',
       phone: '',
-      position: '',
-      department: '',
+      position: 'Field Worker',
       skills: '',
-      location: '',
+      location: 'Phase A',
+      remarks: '',
     });
   } else if (type === 'asset') {
     setFormData({
-      name: '',
-      category: '',
+      assetName: '',
+      assetId: '',
+      assetType: 'Machinery',
+      category: 'Field Equipment',
+      status: 'Active',
       manufacturer: '',
       model: '',
+      year: '2024',
       serialNumber: '',
-      location: '',
+      location: 'Block A',
       purchaseDate: '',
       purchasePrice: '',
+      efficiency: '90%',
     });
   } else if (type === 'area') {
     setFormData({
@@ -231,275 +240,581 @@ export default function CreateFormScreen() {
     </>
   );
 
-  const renderWorkerForm = () => (
-    <>
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Full Name *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter worker's full name"
-          value={formData.name}
-          onChangeText={(text) => handleInputChange('name', text)}
-          placeholderTextColor="#999999"
-        />
-      </View>
+  const POSITIONS = ['Field Worker', 'Technician', 'Harvester'];
+  const LOCATIONS = ['Block A', 'Block B', 'Block C', 'Block D'];
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="worker@farm.com"
-            value={formData.email}
-            onChangeText={(text) => handleInputChange('email', text)}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholderTextColor="#999999"
-          />
-        </View>
+const renderWorkerForm = () => (
+  <>
+    {/* Name */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Worker Name </Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter worker name"
+        value={formData.name}
+        onChangeText={(text) => handleInputChange('name', text)}
+        placeholderTextColor="#999999"
+      />
+    </View>
 
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Phone</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="+1 (555) 123-4567"
-            value={formData.phone}
-            onChangeText={(text) => handleInputChange('phone', text)}
-            keyboardType="phone-pad"
-            placeholderTextColor="#999999"
-          />
-        </View>
-      </View>
+    {/* Email */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Email</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="worker@email.com"
+        value={formData.email}
+        onChangeText={(text) => handleInputChange('email', text)}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        placeholderTextColor="#999999"
+      />
+    </View>
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Position</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Job title"
-            value={formData.position}
-            onChangeText={(text) => handleInputChange('position', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
+    {/* Phone */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Phone Number</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="012-3456789"
+        value={formData.phone}
+        onChangeText={(text) => handleInputChange('phone', text)}
+        keyboardType="phone-pad"
+        placeholderTextColor="#999999"
+      />
+    </View>
 
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Department</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Department name"
-            value={formData.department}
-            onChangeText={(text) => handleInputChange('department', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
-      </View>
+    {/* Position – Vertical Select */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Position</Text>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Skills</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter skills separated by commas"
-          value={formData.skills}
-          onChangeText={(text) => handleInputChange('skills', text)}
-          placeholderTextColor="#999999"
-        />
-      </View>
+  <View style={styles.optionList}>
+    {POSITIONS.map((pos) => (
+      <TouchableOpacity
+        key={pos}
+        style={[
+          styles.optionButton,
+          formData.position === pos && styles.optionButtonActive,
+        ]}
+        onPress={() => handleInputChange('position', pos)}
+      >
+        <Text
+          style={[
+            styles.optionText,
+            formData.position === pos && styles.optionTextActive,
+          ]}
+        >
+          {pos}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Location</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Work location or area"
-          value={formData.location}
-          onChangeText={(text) => handleInputChange('location', text)}
-          placeholderTextColor="#999999"
-        />
-      </View>
-    </>
-  );
+  {formData.position ? (
+    <Text style={styles.selectedText}>
+      Selected Position: {formData.position}
+    </Text>
+  ) : null}
+</View>
+
+    {/* Skills */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Skills</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g. spraying, harvesting, machinery"
+        value={formData.skills}
+        onChangeText={(text) => handleInputChange('skills', text)}
+        placeholderTextColor="#999999"
+      />
+    </View>
+
+    {/* Location – Vertical Select */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Location</Text>
+
+  <View style={styles.optionList}>
+    {LOCATIONS.map((loc) => (
+      <TouchableOpacity
+        key={loc}
+        style={[
+          styles.optionButton,
+          formData.location === loc && styles.optionButtonActive,
+        ]}
+        onPress={() => handleInputChange('location', loc)}
+      >
+        <Text
+          style={[
+            styles.optionText,
+            formData.location === loc && styles.optionTextActive,
+          ]}
+        >
+          {loc}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+  {formData.location ? (
+    <Text style={styles.selectedText}>
+      Selected Location: {formData.location}
+    </Text>
+  ) : null}
+</View>
+
+    {/* Remarks */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Remarks</Text>
+      <TextInput
+        style={[styles.input, styles.textArea]}
+        placeholder="Additional notes about the worker"
+        value={formData.remarks}
+        onChangeText={(text) => handleInputChange('remarks', text)}
+        multiline
+        numberOfLines={3}
+        placeholderTextColor="#999999"
+      />
+    </View>
+  </>
+);
+
+const ASSET_TYPES = ['Machinery', 'Vehicle', 'Tool', 'Electrical'];
+const ASSET_CATEGORIES = ['Field Equipment', 'Transport', 'Processing'];
+const ASSET_STATUS = ['Active', 'Maintenance Required', 'Out of Service'];
+const ASSET_LOCATIONS = ['Block A', 'Block B', 'Block C', 'Block D'];
+const ASSET_EFFICIENCY = Array.from({ length: 101 }, (_, i) => `${100 - i}%`);
+const ASSET_YEARS = Array.from({ length: 25 }, (_, i) => `${2025 - i}`);
 
   const renderAssetForm = () => (
-    <>
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Asset Name *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter asset name"
-          value={formData.name}
-          onChangeText={(text) => handleInputChange('name', text)}
-          placeholderTextColor="#999999"
+  <>
+    {/* Asset Name */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Asset Name </Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g. Tractor"
+        value={formData.assetName}
+        onChangeText={(text) => handleInputChange('assetName', text)}
+      />
+    </View>
+
+    {/* Asset ID */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Asset ID </Text>
+      <TextInput
+        style={styles.input}
+        placeholder="AST-001"
+        value={formData.assetId}
+        onChangeText={(text) => handleInputChange('assetId', text)}
+      />
+    </View>
+
+    {/* Asset Type */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Asset Type</Text>
+      <View style={styles.optionList}>
+        {ASSET_TYPES.map((item) => (
+          <TouchableOpacity
+            key={item}
+            style={[
+              styles.optionButton,
+              formData.assetType === item && styles.optionButtonActive,
+            ]}
+            onPress={() => handleInputChange('assetType', item)}
+          >
+            <Text
+              style={[
+                styles.optionText,
+                formData.assetType === item && styles.optionTextActive,
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Text style={styles.selectedText}>Selected: {formData.assetType}</Text>
+    </View>
+
+    {/* Category */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Category</Text>
+      <View style={styles.optionList}>
+        {ASSET_CATEGORIES.map((item) => (
+          <TouchableOpacity
+            key={item}
+            style={[
+              styles.optionButton,
+              formData.category === item && styles.optionButtonActive,
+            ]}
+            onPress={() => handleInputChange('category', item)}
+          >
+            <Text
+              style={[
+                styles.optionText,
+                formData.category === item && styles.optionTextActive,
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Text style={styles.selectedText}>Selected: {formData.category}</Text>
+    </View>
+
+    {/* Status */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Status</Text>
+      <View style={styles.optionList}>
+        {ASSET_STATUS.map((item) => (
+          <TouchableOpacity
+            key={item}
+            style={[
+              styles.optionButton,
+              formData.status === item && styles.optionButtonActive,
+            ]}
+            onPress={() => handleInputChange('status', item)}
+          >
+            <Text
+              style={[
+                styles.optionText,
+                formData.status === item && styles.optionTextActive,
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Text style={styles.selectedText}>Selected: {formData.status}</Text>
+    </View>
+
+    {/* Manufacturer */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Manufacturer</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g. John Deere"
+        value={formData.manufacturer}
+        onChangeText={(text) => handleInputChange('manufacturer', text)}
+      />
+    </View>
+
+    {/* Model */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Model</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Model number"
+        value={formData.model}
+        onChangeText={(text) => handleInputChange('model', text)}
+      />
+    </View>
+
+    {/* Year */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Year</Text>
+
+  {/* CLEAR SELECTED DISPLAY */}
+  <View style={styles.clearSelectedBox}>
+    <Text style={styles.clearSelectedText}>
+      {formData.year || 'No year selected'}
+    </Text>
+  </View>
+
+  {/* SCROLL PICKER */}
+  <View style={styles.pickerContainerLarge}>
+    <Picker
+      selectedValue={formData.year}
+      onValueChange={(value) => handleInputChange('year', value)}
+      dropdownIconColor="#2E7D32"
+    >
+      <Picker.Item label="Scroll to select year" value="" />
+      {ASSET_YEARS.map((year) => (
+        <Picker.Item
+          key={year}
+          label={year}
+          value={year}
+          color="#000000"   // 🔴 IMPORTANT
         />
+      ))}
+    </Picker>
+  </View>
+</View>
+
+    {/* Serial Number */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Serial Number</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="S/N"
+        value={formData.serialNumber}
+        onChangeText={(text) => handleInputChange('serialNumber', text)}
+      />
+    </View>
+
+    {/* Location */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Location</Text>
+      <View style={styles.optionList}>
+        {ASSET_LOCATIONS.map((item) => (
+          <TouchableOpacity
+            key={item}
+            style={[
+              styles.optionButton,
+              formData.location === item && styles.optionButtonActive,
+            ]}
+            onPress={() => handleInputChange('location', item)}
+          >
+            <Text
+              style={[
+                styles.optionText,
+                formData.location === item && styles.optionTextActive,
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
+      <Text style={styles.selectedText}>Selected: {formData.location}</Text>
+    </View>
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Category</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Equipment type"
-            value={formData.category}
-            onChangeText={(text) => handleInputChange('category', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
+    {/* Purchase Date (Calendar-ready placeholder) */}
+    <View style={styles.inputGroup}>
+  <Text style={styles.label}>Purchase Date</Text>
 
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Manufacturer</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Brand name"
-            value={formData.manufacturer}
-            onChangeText={(text) => handleInputChange('manufacturer', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
-      </View>
+  <TouchableOpacity
+    style={[styles.input, styles.centerContent]}
+    onPress={() => setShowDatePicker(true)}
+    activeOpacity={0.8}
+  >
+    <Text
+      style={[
+        styles.centerText,
+        { color: formData.purchaseDate ? '#333' : '#999' },
+      ]}
+    >
+      {formData.purchaseDate || 'Tap to select date'}
+    </Text>
+  </TouchableOpacity>
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Model</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Model number"
-            value={formData.model}
-            onChangeText={(text) => handleInputChange('model', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
+  {showDatePicker && (
+    <DateTimePicker
+      value={
+        formData.purchaseDate
+          ? new Date(formData.purchaseDate)
+          : new Date()
+      }
+      mode="date"
+      display="default"
+      onChange={(event, date) => {
+        setShowDatePicker(false);
+        if (date) {
+          handleInputChange(
+            'purchaseDate',
+            date.toISOString().split('T')[0]
+          );
+        }
+      }}
+    />
+  )}
+</View>
 
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Serial Number</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="S/N"
-            value={formData.serialNumber}
-            onChangeText={(text) => handleInputChange('serialNumber', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
-      </View>
+    {/* Purchase Price */}
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Purchase Price</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="RM 0.00"
+        keyboardType="numeric"
+        value={formData.purchasePrice}
+        onChangeText={(text) => handleInputChange('purchasePrice', text)}
+      />
+    </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Location</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Where is this asset located?"
-          value={formData.location}
-          onChangeText={(text) => handleInputChange('location', text)}
-          placeholderTextColor="#999999"
+    {/* Efficiency */}
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Efficiency</Text>
+
+  {/* CLEAR SELECTED DISPLAY */}
+  <View style={styles.clearSelectedBox}>
+    <Text style={styles.clearSelectedText}>
+      {formData.efficiency || 'No efficiency selected'}
+    </Text>
+  </View>
+
+  {/* SCROLL PICKER */}
+  <View style={styles.pickerContainerLarge}>
+    <Picker
+      selectedValue={formData.efficiency}
+      onValueChange={(value) => handleInputChange('efficiency', value)}
+      dropdownIconColor="#2E7D32"
+    >
+      <Picker.Item label="Scroll to select efficiency" value="" />
+      {ASSET_EFFICIENCY.map((eff) => (
+        <Picker.Item
+          key={eff}
+          label={eff}
+          value={eff}
+          color="#000000"   // 🔴 IMPORTANT
         />
-      </View>
+      ))}
+    </Picker>
+  </View>
+</View>
+  </>
+);
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Purchase Date</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="YYYY-MM-DD"
-            value={formData.purchaseDate}
-            onChangeText={(text) => handleInputChange('purchaseDate', text)}
-            placeholderTextColor="#999999"
-          />
-        </View>
-
-        <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Purchase Price</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="$0.00"
-            value={formData.purchasePrice}
-            onChangeText={(text) => handleInputChange('purchasePrice', text)}
-            keyboardType="numeric"
-            placeholderTextColor="#999999"
-          />
-        </View>
-      </View>
-    </>
-  );
+const PHASE_NAMES = ['Phase A', 'Phase B', 'Phase C', 'Phase D', 'Phase E', 'Phase F'];
+const PHASE_NUMBERS = Array.from({ length: 100 }, (_, i) => `${i + 1}`);
+const EXPECTED_BLOCKS = Array.from({ length: 100 }, (_, i) => `${i + 1}`);
+const PHASE_STATUS = ['Active', 'Inactive'];
 
   const renderPhaseForm = () => (
   <>
+    {/* Phase Name */}
     <View style={styles.inputGroup}>
-      <Text style={styles.label}>Phase Name *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Phase A"
-        value={formData.phaseName}
-        onChangeText={(text) => handleInputChange('phaseName', text)}
-        placeholderTextColor="#999999"
-      />
+      <Text style={styles.label}>Phase Name </Text>
+
+      <View style={styles.clearSelectedBox}>
+        <Text style={styles.clearSelectedText}>
+          {formData.phaseName || 'No phase selected'}
+        </Text>
+      </View>
+
+      <View style={styles.pickerContainerLarge}>
+        <Picker
+          selectedValue={formData.phaseName}
+          onValueChange={(value) => handleInputChange('phaseName', value)}
+        >
+          <Picker.Item label="Scroll to select phase" value="" />
+          {PHASE_NAMES.map((phase) => (
+            <Picker.Item key={phase} label={phase} value={phase} color="#000" />
+          ))}
+        </Picker>
+      </View>
     </View>
 
+    {/* Phase Number */}
     <View style={styles.inputGroup}>
-      <Text style={styles.label}>Phase Number *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="1"
-        value={formData.phaseNumber}
-        onChangeText={(text) => handleInputChange('phaseNumber', text)}
-        keyboardType="numeric"
-        placeholderTextColor="#999999"
-      />
+      <Text style={styles.label}>Phase Number </Text>
+
+      <View style={styles.clearSelectedBox}>
+        <Text style={styles.clearSelectedText}>
+          {formData.phaseNumber || 'No number selected'}
+        </Text>
+      </View>
+
+      <View style={styles.pickerContainerLarge}>
+        <Picker
+          selectedValue={formData.phaseNumber}
+          onValueChange={(value) => handleInputChange('phaseNumber', value)}
+        >
+          <Picker.Item label="Scroll to select number" value="" />
+          {PHASE_NUMBERS.map((num) => (
+            <Picker.Item key={num} label={num} value={num} color="#000" />
+          ))}
+        </Picker>
+      </View>
     </View>
 
+    {/* Expected Blocks */}
     <View style={styles.inputGroup}>
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Description of the phase"
-        value={formData.description}
-        onChangeText={(text) => handleInputChange('description', text)}
-        multiline
-        numberOfLines={4}
-        placeholderTextColor="#999999"
-      />
+      <Text style={styles.label}>Expected Number Of Blocks</Text>
+
+      <View style={styles.clearSelectedBox}>
+        <Text style={styles.clearSelectedText}>
+          {formData.expectedBlocks || 'No blocks selected'}
+        </Text>
+      </View>
+
+      <View style={styles.pickerContainerLarge}>
+        <Picker
+          selectedValue={formData.expectedBlocks}
+          onValueChange={(value) => handleInputChange('expectedBlocks', value)}
+        >
+          <Picker.Item label="Scroll to select blocks" value="" />
+          {EXPECTED_BLOCKS.map((num) => (
+            <Picker.Item key={num} label={num} value={num} color="#000" />
+          ))}
+        </Picker>
+      </View>
     </View>
 
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>Total Area (hectares)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="25.5"
-        value={formData.totalArea}
-        onChangeText={(text) => handleInputChange('totalArea', text)}
-        keyboardType="numeric"
-        placeholderTextColor="#999999"
-      />
-    </View>
-
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>Expected Blocks</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="5"
-        value={formData.expectedBlocks}
-        onChangeText={(text) => handleInputChange('expectedBlocks', text)}
-        keyboardType="numeric"
-        placeholderTextColor="#999999"
-      />
-    </View>
-
+    {/* Status */}
     <View style={styles.inputGroup}>
       <Text style={styles.label}>Status</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Active / Inactive"
-        value={formData.status}
-        onChangeText={(text) => handleInputChange('status', text)}
-        placeholderTextColor="#999999"
-      />
+
+      <View style={styles.optionList}>
+        {PHASE_STATUS.map((status) => (
+          <TouchableOpacity
+            key={status}
+            style={[
+              styles.optionButton,
+              formData.status === status && styles.optionButtonActive,
+            ]}
+            onPress={() => handleInputChange('status', status)}
+          >
+            <Text
+              style={[
+                styles.optionText,
+                formData.status === status && styles.optionTextActive,
+              ]}
+            >
+              {status}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {formData.status && (
+        <Text style={styles.selectedText}>
+          Selected: {formData.status}
+        </Text>
+      )}
     </View>
 
+    {/* Established Date */}
     <View style={styles.inputGroup}>
       <Text style={styles.label}>Established Date</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="YYYY-MM-DD"
-        value={formData.establishedDate}
-        onChangeText={(text) => handleInputChange('establishedDate', text)}
-        placeholderTextColor="#999999"
-      />
+
+      <TouchableOpacity
+  style={[styles.input, styles.centerContent]}
+  onPress={() => setShowDatePicker(true)}
+  activeOpacity={0.8}
+>
+  <Text
+    style={[
+      styles.centerText,
+      { color: formData.establishedDate ? '#333' : '#999' },
+    ]}
+  >
+    {formData.establishedDate || 'Tap to select date'}
+  </Text>
+</TouchableOpacity>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={
+            formData.establishedDate
+              ? new Date(formData.establishedDate)
+              : new Date()
+          }
+          mode="date"
+          display="default"
+          onChange={(event, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              handleInputChange(
+                'establishedDate',
+                date.toISOString().split('T')[0]
+              );
+            }
+          }}
+        />
+      )}
     </View>
   </>
 );
@@ -668,4 +983,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  optionList: {
+  gap: 10,
+},
+
+optionButton: {
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderRadius: 10,
+  borderWidth: 2,
+  borderColor: '#E0E0E0',
+  backgroundColor: '#FFFFFF',
+},
+
+optionButtonActive: {
+  backgroundColor: '#2E7D32',
+  borderColor: '#2E7D32',
+},
+
+optionText: {
+  fontSize: 16,
+  color: '#333333',
+  fontWeight: '500',
+},
+
+optionTextActive: {
+  color: '#FFFFFF',
+},
+
+selectedText: {
+  marginTop: 8,
+  fontSize: 14,
+  color: '#2E7D32',
+  fontWeight: '600',
+},
+clearSelectedBox: {
+  backgroundColor: '#2E7D32',
+  paddingVertical: 14,
+  borderRadius: 12,
+  alignItems: 'center',
+  marginBottom: 10,
+},
+
+clearSelectedText: {
+  fontSize: 18,
+  fontWeight: '700',
+  color: '#FFFFFF',   // 🔥 HIGH CONTRAST
+},
+
+pickerContainerLarge: {
+  borderWidth: 2,
+  borderColor: '#2E7D32',
+  borderRadius: 12,
+  backgroundColor: '#FFFFFF',
+  height: 200,
+  justifyContent: 'center',
+},
+centerContent: {
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+centerText: {
+  fontSize: 16,
+  fontWeight: '500',
+},
 });
