@@ -1,26 +1,21 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-
-// Arrays for dropdown selection
-const BLOCK_NAMES = Array.from({ length: 26 }, (_, i) =>
-  String.fromCharCode(65 + i)
-);
-const BLOCK_NUMBERS = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
 
 export default function CreateBlockScreen() {
   const router = useRouter();
@@ -34,9 +29,41 @@ export default function CreateBlockScreen() {
     phaseNumber: parsedPhase.phaseNumber || '',
     areaHectare: '',
     areaAcre: '',
+    treesPerHectare: '',
+    totalTrees: '',
+    palmVariety: '',
+    plantingDate: '', // string YYYY-MM-DD
+    palmAge: '',
+    status: '',
+    estimatedYield: '',
+    soilType: '',
+    drainage: '',
+    slope: '',
+    accessibility: '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showPlantingDatePicker, setShowPlantingDatePicker] = useState(false);
+
+  // Tap-to-select toggle states
+  const [showPalmVarietyOptions, setShowPalmVarietyOptions] = useState(false);
+  const [showStatusOptions, setShowStatusOptions] = useState(false);
+  const [showSoilTypeOptions, setShowSoilTypeOptions] = useState(false);
+  const [showDrainageOptions, setShowDrainageOptions] = useState(false);
+  const [showAccessibilityOptions, setShowAccessibilityOptions] = useState(false);
+
+  // Dropdown options
+  const BLOCK_NAMES = Array.from({ length: 26 }, (_, i) =>
+    String.fromCharCode(65 + i)
+  );
+  const BLOCK_NUMBERS = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
+  const PALM_VARIETIES = ['Dura', 'Tenera', 'Pisifera'];
+  const STATUS_OPTIONS = ['Active', 'Inactive'];
+  const SOIL_TYPES = ['Clay', 'Sandy', 'Loamy', 'Peaty'];
+  const DRAINAGE_OPTIONS = ['Good', 'Moderate', 'Poor'];
+  const ACCESSIBILITY_OPTIONS = ['Easy', 'Moderate', 'Difficult'];
+  const PALM_AGE_OPTIONS = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
+  const SLOPE_OPTIONS = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
 
   const handleInputChange = (field: string, value: string) => {
     setBlockData((prev: any) => ({ ...prev, [field]: value }));
@@ -68,6 +95,24 @@ export default function CreateBlockScreen() {
     }, 1000);
   };
 
+  // Render function for tap-to-select options
+  const renderOptions = (options: string[], field: string, toggleFn: any) => (
+    <View style={{ marginTop: 8 }}>
+      {options.map((option) => (
+        <TouchableOpacity
+          key={option}
+          style={styles.optionButton}
+          onPress={() => {
+            handleInputChange(field, option);
+            toggleFn(false);
+          }}
+        >
+          <Text style={styles.optionText}>{option}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -95,66 +140,57 @@ export default function CreateBlockScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.form}>
+            {/* Block Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Block Name</Text>
+              <View style={styles.selectedBox}>
+                <Text style={styles.selectedBoxText}>
+                  {blockData.blockName
+                    ? `Selected Block: ${blockData.blockName}`
+                    : 'Please select a block name'}
+                </Text>
+              </View>
+              <View style={styles.pickerContainerLarge}>
+                <Picker
+                  selectedValue={blockData.blockName}
+                  onValueChange={(value) => handleInputChange('blockName', value)}
+                  style={{ color: '#000', fontSize: 16, height: 180 }}
+                  itemStyle={{ color: '#000', fontSize: 16 }}
+                >
+                  <Picker.Item label="" value="" />
+                  {BLOCK_NAMES.map((name) => (
+                    <Picker.Item key={name} label={name} value={name} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
 
-{/* BLOCK NAME (Scrollable Picker) */}
-<View style={styles.inputGroup}>
-  <Text style={styles.label}>Block Name</Text>
+            {/* Block Number */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Block Number</Text>
+              <View style={styles.selectedBox}>
+                <Text style={styles.selectedBoxText}>
+                  {blockData.blockNumber
+                    ? `Selected Number: ${blockData.blockNumber}`
+                    : 'Please select a block number'}
+                </Text>
+              </View>
+              <View style={styles.pickerContainerLarge}>
+                <Picker
+                  selectedValue={blockData.blockNumber}
+                  onValueChange={(value) => handleInputChange('blockNumber', value)}
+                  style={{ color: '#000', fontSize: 16, height: 180 }}
+                  itemStyle={{ color: '#000', fontSize: 16 }}
+                >
+                  <Picker.Item label="" value="" />
+                  {BLOCK_NUMBERS.map((num) => (
+                    <Picker.Item key={num} label={num} value={num} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
 
-  {/* Selected value box */}
-  <View style={styles.selectedBox}>
-    <Text style={styles.selectedBoxText}>
-      {blockData.blockName
-        ? `Selected Block: ${blockData.blockName}`
-        : 'Please select a block name'}
-    </Text>
-  </View>
-
-  {/* Scrollable Picker */}
-  <View style={styles.pickerContainerLarge}>
-    <Picker
-      selectedValue={blockData.blockName}
-      onValueChange={(value) => handleInputChange('blockName', value)}
-      style={{ color: '#000', fontSize: 16, height: 180 }} // <- ensures selected value is black
-  itemStyle={{ color: '#000', fontSize: 16 }}          // <- ensures all items are black
->
-      <Picker.Item label="" value="" />
-      {BLOCK_NAMES.map((name) => (
-        <Picker.Item key={name} label={name} value={name} />
-      ))}
-    </Picker>
-  </View>
-</View>
-
-{/* BLOCK NUMBER (Scrollable Picker) */}
-<View style={styles.inputGroup}>
-  <Text style={styles.label}>Block Number</Text>
-
-  {/* Selected value box */}
-  <View style={styles.selectedBox}>
-    <Text style={styles.selectedBoxText}>
-      {blockData.blockNumber
-        ? `Selected Number: ${blockData.blockNumber}`
-        : 'Please select a block number'}
-    </Text>
-  </View>
-
-  {/* Scrollable Picker */}
-  <View style={styles.pickerContainerLarge}>
-    <Picker
-      selectedValue={blockData.blockNumber}
-      onValueChange={(value) => handleInputChange('blockNumber', value)}
-      style={{ color: '#000', fontSize: 16, height: 180 }}
-  itemStyle={{ color: '#000', fontSize: 16 }}
->
-      <Picker.Item label="" value="" />
-      {BLOCK_NUMBERS.map((num) => (
-        <Picker.Item key={num} label={num} value={num} />
-      ))}
-    </Picker>
-  </View>
-</View>
-
-            {/* PHASE NAME */}
+            {/* Phase Name */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Phase Name</Text>
               <TextInput
@@ -164,7 +200,7 @@ export default function CreateBlockScreen() {
               />
             </View>
 
-            {/* PHASE NUMBER */}
+            {/* Phase Number */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Phase Number</Text>
               <TextInput
@@ -174,7 +210,7 @@ export default function CreateBlockScreen() {
               />
             </View>
 
-            {/* AREA HECTARE */}
+            {/* Area Hectare */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Area (hectare)</Text>
               <TextInput
@@ -185,7 +221,7 @@ export default function CreateBlockScreen() {
               />
             </View>
 
-            {/* AREA ACRE */}
+            {/* Area Acre */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Area (acre)</Text>
               <TextInput
@@ -194,6 +230,196 @@ export default function CreateBlockScreen() {
                 value={blockData.areaAcre}
                 onChangeText={(text) => handleInputChange('areaAcre', text)}
               />
+            </View>
+
+            {/* Trees per Hectare */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Trees per Hectare</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={blockData.treesPerHectare}
+                onChangeText={(text) => handleInputChange('treesPerHectare', text)}
+              />
+            </View>
+
+            {/* Total Trees */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Total Trees</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={blockData.totalTrees}
+                onChangeText={(text) => handleInputChange('totalTrees', text)}
+              />
+            </View>
+
+            {/* Palm Variety */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Palm Variety</Text>
+              <TouchableOpacity
+                style={styles.selectedBox}
+                onPress={() => setShowPalmVarietyOptions(!showPalmVarietyOptions)}
+              >
+                <Text style={styles.selectedBoxText}>
+                  {blockData.palmVariety
+                    ? `Selected: ${blockData.palmVariety}`
+                    : 'Tap to select variety'}
+                </Text>
+              </TouchableOpacity>
+              {showPalmVarietyOptions && renderOptions(PALM_VARIETIES, 'palmVariety', setShowPalmVarietyOptions)}
+            </View>
+
+            {/* Planting Date */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Planting Date</Text>
+              <TouchableOpacity
+                style={[styles.input, styles.centerContent]}
+                onPress={() => setShowPlantingDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.centerText,
+                    { color: blockData.plantingDate ? '#333' : '#999' },
+                  ]}
+                >
+                  {blockData.plantingDate || 'Tap to select date'}
+                </Text>
+              </TouchableOpacity>
+              {showPlantingDatePicker && (
+                <DateTimePicker
+                  value={
+                    blockData.plantingDate
+                      ? new Date(blockData.plantingDate)
+                      : new Date()
+                  }
+                  mode="date"
+                  display="default"
+                  onChange={(event, date) => {
+                    setShowPlantingDatePicker(false);
+                    if (date) {
+                      handleInputChange(
+                        'plantingDate',
+                        date.toISOString().split('T')[0]
+                      );
+                    }
+                  }}
+                />
+              )}
+            </View>
+
+            {/* Palm Age */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Palm Age (Years)</Text>
+              <View style={styles.selectedBox}>
+                <Text style={styles.selectedBoxText}>
+                  {blockData.palmAge ? `Selected Age: ${blockData.palmAge}` : 'Please select palm age'}
+                </Text>
+              </View>
+              <View style={styles.pickerContainerLarge}>
+                <Picker
+                  selectedValue={blockData.palmAge}
+                  onValueChange={(value) => handleInputChange('palmAge', value)}
+                  style={{ color: '#000', fontSize: 16, height: 180 }}
+                  itemStyle={{ color: '#000', fontSize: 16 }}
+                >
+                  <Picker.Item label="" value="" />
+                  {PALM_AGE_OPTIONS.map((age) => (
+                    <Picker.Item key={age} label={age} value={age} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+
+            {/* Status */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Status</Text>
+              <TouchableOpacity
+                style={styles.selectedBox}
+                onPress={() => setShowStatusOptions(!showStatusOptions)}
+              >
+                <Text style={styles.selectedBoxText}>
+                  {blockData.status ? `Selected: ${blockData.status}` : 'Tap to select status'}
+                </Text>
+              </TouchableOpacity>
+              {showStatusOptions && renderOptions(STATUS_OPTIONS, 'status', setShowStatusOptions)}
+            </View>
+
+            {/* Estimated Yield */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Estimated Yield (kg/ha)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={blockData.estimatedYield}
+                onChangeText={(text) => handleInputChange('estimatedYield', text)}
+              />
+            </View>
+
+            {/* Soil Type */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Soil Type</Text>
+              <TouchableOpacity
+                style={styles.selectedBox}
+                onPress={() => setShowSoilTypeOptions(!showSoilTypeOptions)}
+              >
+                <Text style={styles.selectedBoxText}>
+                  {blockData.soilType ? `Selected: ${blockData.soilType}` : 'Tap to select soil type'}
+                </Text>
+              </TouchableOpacity>
+              {showSoilTypeOptions && renderOptions(SOIL_TYPES, 'soilType', setShowSoilTypeOptions)}
+            </View>
+
+            {/* Drainage */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Drainage</Text>
+              <TouchableOpacity
+                style={styles.selectedBox}
+                onPress={() => setShowDrainageOptions(!showDrainageOptions)}
+              >
+                <Text style={styles.selectedBoxText}>
+                  {blockData.drainage ? `Selected: ${blockData.drainage}` : 'Tap to select drainage'}
+                </Text>
+              </TouchableOpacity>
+              {showDrainageOptions && renderOptions(DRAINAGE_OPTIONS, 'drainage', setShowDrainageOptions)}
+            </View>
+
+            {/* Slope */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Slope (%)</Text>
+              <View style={styles.selectedBox}>
+                <Text style={styles.selectedBoxText}>
+                  {blockData.slope ? `Selected Slope: ${blockData.slope}%` : 'Please select slope'}
+                </Text>
+              </View>
+              <View style={styles.pickerContainerLarge}>
+                <Picker
+                  selectedValue={blockData.slope}
+                  onValueChange={(value) => handleInputChange('slope', value)}
+                  style={{ color: '#000', fontSize: 16, height: 180 }}
+                  itemStyle={{ color: '#000', fontSize: 16 }}
+                >
+                  <Picker.Item label="" value="" />
+                  {SLOPE_OPTIONS.map((s) => (
+                    <Picker.Item key={s} label={s} value={s} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+
+            {/* Accessibility */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Accessibility</Text>
+              <TouchableOpacity
+                style={styles.selectedBox}
+                onPress={() => setShowAccessibilityOptions(!showAccessibilityOptions)}
+              >
+                <Text style={styles.selectedBoxText}>
+                  {blockData.accessibility ? `Selected: ${blockData.accessibility}` : 'Tap to select accessibility'}
+                </Text>
+              </TouchableOpacity>
+              {showAccessibilityOptions && renderOptions(ACCESSIBILITY_OPTIONS, 'accessibility', setShowAccessibilityOptions)}
             </View>
 
           </View>
@@ -215,6 +441,7 @@ export default function CreateBlockScreen() {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFE' },
   header: {
@@ -246,54 +473,51 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: '#1B5E20',
+    borderRadius: 16,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
-    color: '#333333',
+    backgroundColor: '#fff',
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
-  footer: { padding: 24, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F0F0F0' },
-  submitButton: { height: 52, backgroundColor: '#2E7D32', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  submitButtonDisabled: { backgroundColor: '#CCCCCC' },
-  submitButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
-
-  pickerContainer: {
+  centerContent: { justifyContent: 'center', alignItems: 'center' },
+  centerText: { fontSize: 16, textTransform: 'uppercase', textAlign: 'center' },
+  selectedBox: {
+    height: 52,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: '#1B5E20',
+    borderRadius: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    marginBottom: 4,
+  },
+  selectedBoxText: { fontSize: 16, textTransform: 'uppercase', textAlign: 'center' },
+  optionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#E8F5E8',
     borderRadius: 12,
+    marginBottom: 6,
+  },
+  optionText: { fontSize: 16, textAlign: 'center' },
+  pickerContainerLarge: {
+    borderWidth: 2,
+    borderColor: '#1B5E20',
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-},
-pickerContainerLarge: {
-  borderWidth: 2,
-  borderColor: '#2E7D32',
-  borderRadius: 12,
-  backgroundColor: '#FFFFFF',
-  height: 180,   // important for scrollable
-  overflow: 'hidden',
-  // remove justifyContent: 'center'
-},
-
-picker: {
-  color: '#000',
-  fontSize: 16,
-  height: '100%', // ensures selected text is visible
-},
-
-selectedBox: {
-  padding: 12,
-  borderRadius: 10,
-  backgroundColor: '#E8F5E9',
-  borderWidth: 1,
-  borderColor: '#2E7D32',
-  marginBottom: 8,
-},
-
-selectedBoxText: {
-  fontSize: 15,
-  fontWeight: '600',
-  color: '#2E7D32',
-},
-
+    marginBottom: 12,
+    height: 180,
+    backgroundColor: '#fff',
+  },
+  footer: { padding: 24, backgroundColor: '#fff' },
+  submitButton: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  submitButtonDisabled: { backgroundColor: '#A5D6A7' },
+  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

@@ -670,7 +670,7 @@ const ASSET_YEARS = Array.from({ length: 25 }, (_, i) => `${2025 - i}`);
 const PHASE_NAMES = ['Phase A', 'Phase B', 'Phase C', 'Phase D', 'Phase E', 'Phase F'];
 const PHASE_NUMBERS = Array.from({ length: 100 }, (_, i) => `${i + 1}`);
 const EXPECTED_BLOCKS = Array.from({ length: 100 }, (_, i) => `${i + 1}`);
-const PHASE_STATUS = ['Active', 'Inactive'];
+const PHASE_STATUS = ['Active', 'Maintenance', 'Development'];
 
   const renderPhaseForm = () => (
   <>
