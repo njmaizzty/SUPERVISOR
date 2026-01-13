@@ -1,11 +1,23 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+  fetchAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+  type Asset,
+  type CreateAssetPayload,
+} from '@/services/assetService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
+  Modal,
+  Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -17,158 +29,94 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// Mock data for assets - Locations strictly changed to Block A, B, C, or D
-const mockAssets = [
-  {
-    id: 'asset1',
-    name: 'John Deere Tractor 5075E',
-    category: 'Heavy Machinery',
-    model: '5075E',
-    manufacturer: 'John Deere',
-    year: 2022,
-    serialNumber: 'JD5075E-2022-001',
-    status: 'Active',
-    location: 'Block A', // Changed from Equipment Yard A
-    purchaseDate: '2022-03-15',
-    purchasePrice: 45000,
-    currentValue: 38000,
-    lastMaintenance: '2024-11-15',
-    nextMaintenance: '2024-12-15',
-    maintenanceCost: 2500,
-    workHours: 1250,
-    efficiency: 92,
-    condition: 'Excellent',
-    assignedTo: 'Carlos Rodriguez',
-    fuelType: 'Diesel',
-    specifications: {
-      power: '75 HP',
-      weight: '3,200 kg',
-      capacity: 'N/A'
-    }
-  },
-  {
-    id: 'asset2',
-    name: 'Irrigation Controller Pro',
-    category: 'Irrigation Equipment',
-    model: 'IC-Pro-2024',
-    manufacturer: 'AquaTech',
-    year: 2024,
-    serialNumber: 'AT-ICP-2024-002',
-    status: 'Active',
-    location: 'Block B', // Changed from Control Room
-    purchaseDate: '2024-01-20',
-    purchasePrice: 8500,
-    currentValue: 7800,
-    lastMaintenance: '2024-10-30',
-    nextMaintenance: '2024-12-30',
-    maintenanceCost: 450,
-    workHours: 2400,
-    efficiency: 98,
-    condition: 'Excellent',
-    assignedTo: 'Maria Garcia',
-    fuelType: 'Electric',
-    specifications: {
-      power: '240V AC',
-      weight: '15 kg',
-      capacity: '24 Zones'
-    }
-  },
-  {
-    id: 'asset3',
-    name: 'Fertilizer Spreader XL',
-    category: 'Application Equipment',
-    model: 'FS-XL-500',
-    manufacturer: 'FarmSpread',
-    year: 2021,
-    serialNumber: 'FS-XL-2021-003',
-    status: 'Maintenance Required',
-    location: 'Block C', // Changed from Storage Shed C
-    purchaseDate: '2021-05-10',
-    purchasePrice: 12000,
-    currentValue: 8500,
-    lastMaintenance: '2024-09-20',
-    nextMaintenance: '2024-11-30',
-    maintenanceCost: 800,
-    workHours: 850,
-    efficiency: 85,
-    condition: 'Good',
-    assignedTo: 'Carlos Rodriguez',
-    fuelType: 'Manual',
-    specifications: {
-      power: 'Manual',
-      weight: '120 kg',
-      capacity: '500 L'
-    }
-  },
-  {
-    id: 'asset4',
-    name: 'Spray Equipment System',
-    category: 'Treatment Equipment',
-    model: 'SES-2023',
-    manufacturer: 'SprayTech',
-    year: 2023,
-    serialNumber: 'ST-SES-2023-004',
-    status: 'Active',
-    location: 'Block A', // Changed from Block A Storage
-    purchaseDate: '2023-07-12',
-    purchasePrice: 15500,
-    currentValue: 13200,
-    lastMaintenance: '2024-11-10',
-    nextMaintenance: '2025-01-10',
-    maintenanceCost: 650,
-    workHours: 420,
-    efficiency: 94,
-    condition: 'Very Good',
-    assignedTo: 'Ana Martinez',
-    fuelType: 'Electric',
-    specifications: {
-      power: '12V DC',
-      weight: '45 kg',
-      capacity: '200 L'
-    }
-  },
-  {
-    id: 'asset5',
-    name: 'Soil Testing Kit Pro',
-    category: 'Testing Equipment',
-    model: 'STK-Pro-2024',
-    manufacturer: 'SoilLab',
-    year: 2024,
-    serialNumber: 'SL-STK-2024-005',
-    status: 'Out of Service',
-    location: 'Block D', // Changed from Laboratory
-    purchaseDate: '2024-02-28',
-    purchasePrice: 3200,
-    currentValue: 2900,
-    lastMaintenance: '2024-08-15',
-    nextMaintenance: '2024-12-01',
-    maintenanceCost: 200,
-    workHours: 180,
-    efficiency: 0,
-    condition: 'Needs Repair',
-    assignedTo: 'David Wilson',
-    fuelType: 'Battery',
-    specifications: {
-      power: 'Rechargeable',
-      weight: '2.5 kg',
-      capacity: 'N/A'
-    }
-  },
+// Asset type options
+const ASSET_TYPE_OPTIONS = [
+  'Machinery',
+  'Electrical',
+  'Vehicle',
+  'Tool',
+  'Equipment',
+  'Infrastructure',
 ];
+
+// Category options
+const CATEGORY_OPTIONS = [
+  'Field Equipment',
+  'Irrigation Equipment',
+  'Application Equipment',
+  'Treatment Equipment',
+  'Testing Equipment',
+  'Transport',
+  'Storage',
+];
+
+// Status options
+const STATUS_OPTIONS = ['Active', 'Maintenance Required', 'Out of Service', 'Reserved'];
+
+// Location options
+const LOCATION_OPTIONS = ['Block A', 'Block B', 'Block C', 'Block D', 'Main Office', 'Storage'];
 
 export default function AssetsScreen() {
   const router = useRouter();
-  const [assets, setAssets] = useState(mockAssets);
+
+  // Data states
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // UI states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
-  const [viewMode, setViewMode] = useState('list');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+
+  // Form states
+  const [formAssetName, setFormAssetName] = useState('');
+  const [formAssetId, setFormAssetId] = useState('');
+  const [formAssetType, setFormAssetType] = useState('Machinery');
+  const [formCategory, setFormCategory] = useState('Field Equipment');
+  const [formStatus, setFormStatus] = useState('Active');
+  const [formManufacturer, setFormManufacturer] = useState('');
+  const [formModel, setFormModel] = useState('');
+  const [formYear, setFormYear] = useState(new Date().getFullYear().toString());
+  const [formSerialNumber, setFormSerialNumber] = useState('');
+  const [formLocation, setFormLocation] = useState('Block A');
+  const [formPurchaseDate, setFormPurchaseDate] = useState('');
+  const [formPurchasePrice, setFormPurchasePrice] = useState('');
+  const [formEfficiency, setFormEfficiency] = useState('100');
 
   const filters = ['All', 'Active', 'Maintenance Required', 'Out of Service'];
 
+  // Load assets from API
+  const loadAssets = useCallback(async () => {
+    try {
+      const response = await fetchAssets();
+      if (response.success && response.data) {
+        setAssets(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading assets:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAssets();
+  }, [loadAssets]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadAssets();
+  }, [loadAssets]);
+
   const filteredAssets = assets.filter(asset => {
-    const matchesSearch = 
-      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      asset.assetName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.assetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.manufacturer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'All' || asset.status === selectedFilter;
@@ -180,134 +128,587 @@ export default function AssetsScreen() {
       case 'Active': return '#4CAF50';
       case 'Maintenance Required': return '#FF9800';
       case 'Out of Service': return '#F44336';
+      case 'Reserved': return '#2196F3';
       default: return '#666666';
     }
   };
 
-  const getConditionColor = (condition: string) => {
-    switch (condition) {
-      case 'Excellent': return '#4CAF50';
-      case 'Very Good': return '#8BC34A';
-      case 'Good': return '#FFC107';
-      case 'Fair': return '#FF9800';
-      case 'Needs Repair': return '#F44336';
-      default: return '#666666';
+  // Reset form
+  const resetForm = () => {
+    setFormAssetName('');
+    setFormAssetId('');
+    setFormAssetType('Machinery');
+    setFormCategory('Field Equipment');
+    setFormStatus('Active');
+    setFormManufacturer('');
+    setFormModel('');
+    setFormYear(new Date().getFullYear().toString());
+    setFormSerialNumber('');
+    setFormLocation('Block A');
+    setFormPurchaseDate('');
+    setFormPurchasePrice('');
+    setFormEfficiency('100');
+    setEditingAsset(null);
+  };
+
+  // Generate Asset ID
+  const generateAssetId = () => {
+    const prefix = 'AST';
+    const num = String(assets.length + 1).padStart(3, '0');
+    setFormAssetId(`${prefix}-${num}`);
+  };
+
+  // Open create modal
+  const handleOpenCreateModal = () => {
+    resetForm();
+    generateAssetId();
+    setShowCreateModal(true);
+  };
+
+  // Open edit modal
+  const handleOpenEditModal = (asset: Asset) => {
+    setEditingAsset(asset);
+    setFormAssetName(asset.assetName);
+    setFormAssetId(asset.assetId);
+    setFormAssetType(asset.assetType);
+    setFormCategory(asset.category);
+    setFormStatus(asset.status);
+    setFormManufacturer(asset.manufacturer);
+    setFormModel(asset.model);
+    setFormYear(asset.year);
+    setFormSerialNumber(asset.serialNumber);
+    setFormLocation(asset.location);
+    setFormPurchaseDate(asset.purchaseDate);
+    setFormPurchasePrice(asset.purchasePrice);
+    setFormEfficiency(asset.efficiency.replace('%', ''));
+    setShowEditModal(true);
+  };
+
+  // Create asset
+  const handleCreateAsset = async () => {
+    if (!formAssetName.trim()) {
+      showAlert('Error', 'Asset name is required');
+      return;
+    }
+    if (!formAssetId.trim()) {
+      showAlert('Error', 'Asset ID is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: CreateAssetPayload = {
+        assetName: formAssetName.trim(),
+        assetId: formAssetId.trim(),
+        assetType: formAssetType,
+        category: formCategory,
+        status: formStatus,
+        manufacturer: formManufacturer.trim(),
+        model: formModel.trim(),
+        year: formYear,
+        serialNumber: formSerialNumber.trim(),
+        location: formLocation,
+        purchaseDate: formPurchaseDate,
+        purchasePrice: formPurchasePrice,
+        efficiency: `${formEfficiency}%`,
+      };
+
+      const response = await createAsset(payload);
+      if (response.success && response.data) {
+        setAssets(prev => [...prev, response.data!]);
+        setShowCreateModal(false);
+        resetForm();
+        showAlert('Success', 'Asset added successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to create asset');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to create asset. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleAssetPress = (asset: any) => {
-    Alert.alert(
-      asset.name,
-      `Category: ${asset.category}\nModel: ${asset.model}\nManufacturer: ${asset.manufacturer}\nStatus: ${asset.status}\nLocation: ${asset.location}\n\nCondition: ${asset.condition}\nEfficiency: ${asset.efficiency}%\nWork Hours: ${asset.workHours}h\nAssigned to: ${asset.assignedTo}`,
-      [
-        { text: 'Schedule Maintenance', onPress: () => Alert.alert('Schedule Maintenance', 'Maintenance scheduling coming soon') },
-        { text: 'View Details', onPress: () => Alert.alert('Asset Details', 'Detailed view coming soon') },
-        { text: 'Close', style: 'cancel' }
-      ]
-    );
+  // Update asset
+  const handleUpdateAsset = async () => {
+    if (!editingAsset) return;
+
+    if (!formAssetName.trim()) {
+      showAlert('Error', 'Asset name is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        assetName: formAssetName.trim(),
+        assetId: formAssetId.trim(),
+        assetType: formAssetType,
+        category: formCategory,
+        status: formStatus,
+        manufacturer: formManufacturer.trim(),
+        model: formModel.trim(),
+        year: formYear,
+        serialNumber: formSerialNumber.trim(),
+        location: formLocation,
+        purchaseDate: formPurchaseDate,
+        purchasePrice: formPurchasePrice,
+        efficiency: `${formEfficiency}%`,
+      };
+
+      const response = await updateAsset(editingAsset.id, payload);
+      if (response.success && response.data) {
+        setAssets(prev => prev.map(a => a.id === editingAsset.id ? response.data! : a));
+        setShowEditModal(false);
+        resetForm();
+        showAlert('Success', 'Asset updated successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to update asset');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to update asset. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleAddAsset = () => {
-    router.push('/create-form?type=asset');
+  // Delete asset
+  const handleDeleteAsset = async (asset: Asset) => {
+    const confirmDelete = async () => {
+      if (Platform.OS === 'web') {
+        return window.confirm(`Are you sure you want to delete "${asset.assetName}"?`);
+      }
+      return new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Delete Asset',
+          `Are you sure you want to delete "${asset.assetName}"?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+          ]
+        );
+      });
+    };
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+      const response = await deleteAsset(asset.id);
+      if (response.success) {
+        setAssets(prev => prev.filter(a => a.id !== asset.id));
+        showAlert('Success', 'Asset deleted successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to delete asset');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to delete asset. Please try again.');
+    }
   };
 
-  const formatCurrency = (amount: number) => {
+  // Show alert (cross-platform)
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return 'MYR 0';
     return new Intl.NumberFormat('en-MY', {
       style: 'currency',
       currency: 'MYR',
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(num);
   };
 
-  const renderAssetCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.assetCard} 
-      onPress={() => handleAssetPress(item)}
-      activeOpacity={0.8}
+  // Render asset form modal
+  const renderAssetFormModal = (isEdit: boolean) => (
+    <Modal
+      visible={isEdit ? showEditModal : showCreateModal}
+      animationType="slide"
     >
-      <View style={styles.assetHeader}>
-        <View style={styles.assetIcon}>
-          <IconSymbol name="house.fill" size={24} color="#2E7D32" />
-        </View>
-        <View style={styles.assetTitleSection}>
-          <Text style={styles.assetName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.assetCategory}>{item.category}</Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
+      <SafeAreaView style={styles.modalContainer}>
+        <ScrollView
+          contentContainerStyle={styles.modalContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                isEdit ? setShowEditModal(false) : setShowCreateModal(false);
+                resetForm();
+              }}
+            >
+              <IconSymbol name="chevron.left" size={24} color="#666" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {isEdit ? 'Edit Asset' : 'Add New Asset'}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-      <View style={styles.assetDetails}>
-        <View style={styles.detailRow}>
-          <IconSymbol name="house.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>{item.manufacturer} • {item.model}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <IconSymbol name="house.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>{item.location}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <IconSymbol name="person.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>Assigned to: {item.assignedTo}</Text>
-        </View>
-      </View>
+          {/* Asset Name */}
+          <Text style={styles.label}>Asset Name *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formAssetName}
+            onChangeText={setFormAssetName}
+            placeholder="Enter asset name"
+            placeholderTextColor="#999"
+          />
 
-      <View style={styles.assetMetrics}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>{item.efficiency}%</Text>
-          <Text style={styles.metricLabel}>Efficiency</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>{item.workHours}h</Text>
-          <Text style={styles.metricLabel}>Work Hours</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>{formatCurrency(item.currentValue)}</Text>
-          <Text style={styles.metricLabel}>Value</Text>
-        </View>
-      </View>
+          {/* Asset ID */}
+          <Text style={styles.label}>Asset ID *</Text>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.textInput, { flex: 1 }]}
+              value={formAssetId}
+              onChangeText={setFormAssetId}
+              placeholder="e.g., AST-001"
+              placeholderTextColor="#999"
+            />
+            {!isEdit && (
+              <TouchableOpacity style={styles.generateButton} onPress={generateAssetId}>
+                <Text style={styles.generateButtonText}>Generate</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
-      <View style={styles.maintenanceInfo}>
-        <View style={styles.maintenanceItem}>
-          <Text style={styles.maintenanceLabel}>Last Maintenance:</Text>
-          <Text style={styles.maintenanceDate}>{item.lastMaintenance}</Text>
-        </View>
-        <View style={styles.maintenanceItem}>
-          <Text style={styles.maintenanceLabel}>Next Due:</Text>
-          <Text style={[
-            styles.maintenanceDate,
-            { color: new Date(item.nextMaintenance) < new Date() ? '#F44336' : '#666666' }
-          ]}>
-            {item.nextMaintenance}
-          </Text>
-        </View>
-      </View>
+          {/* Asset Type */}
+          <Text style={styles.label}>Asset Type</Text>
+          <View style={styles.optionsContainer}>
+            {ASSET_TYPE_OPTIONS.map(type => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.optionButton,
+                  formAssetType === type && styles.optionButtonActive
+                ]}
+                onPress={() => setFormAssetType(type)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  formAssetType === type && styles.optionTextActive
+                ]}>
+                  {type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-      <View style={styles.assetFooter}>
-        <View style={[styles.conditionBadge, { backgroundColor: getConditionColor(item.condition) + '20' }]}>
-          <Text style={[styles.conditionText, { color: getConditionColor(item.condition) }]}>
-            {item.condition}
-          </Text>
-        </View>
-        <Text style={styles.serialNumber}>S/N: {item.serialNumber}</Text>
-      </View>
-    </TouchableOpacity>
+          {/* Category */}
+          <Text style={styles.label}>Category</Text>
+          <View style={styles.optionsContainer}>
+            {CATEGORY_OPTIONS.map(cat => (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.optionButton,
+                  formCategory === cat && styles.optionButtonActive
+                ]}
+                onPress={() => setFormCategory(cat)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  formCategory === cat && styles.optionTextActive
+                ]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Status */}
+          <Text style={styles.label}>Status</Text>
+          <View style={styles.optionsContainer}>
+            {STATUS_OPTIONS.map(status => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.statusButton,
+                  formStatus === status && { backgroundColor: getStatusColor(status) }
+                ]}
+                onPress={() => setFormStatus(status)}
+              >
+                <Text style={[
+                  styles.statusButtonText,
+                  formStatus === status && styles.statusButtonTextActive
+                ]}>
+                  {status}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Manufacturer & Model Row */}
+          <View style={styles.rowContainer}>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Manufacturer</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formManufacturer}
+                onChangeText={setFormManufacturer}
+                placeholder="e.g., John Deere"
+                placeholderTextColor="#999"
+              />
+            </View>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Model</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formModel}
+                onChangeText={setFormModel}
+                placeholder="e.g., 5075E"
+                placeholderTextColor="#999"
+              />
+            </View>
+          </View>
+
+          {/* Year & Serial Number Row */}
+          <View style={styles.rowContainer}>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Year</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formYear}
+                onChangeText={setFormYear}
+                placeholder="e.g., 2024"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                maxLength={4}
+              />
+            </View>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Serial Number</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formSerialNumber}
+                onChangeText={setFormSerialNumber}
+                placeholder="Enter serial number"
+                placeholderTextColor="#999"
+              />
+            </View>
+          </View>
+
+          {/* Location */}
+          <Text style={styles.label}>Location</Text>
+          <View style={styles.optionsContainer}>
+            {LOCATION_OPTIONS.map(loc => (
+              <TouchableOpacity
+                key={loc}
+                style={[
+                  styles.optionButton,
+                  formLocation === loc && styles.optionButtonActive
+                ]}
+                onPress={() => setFormLocation(loc)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  formLocation === loc && styles.optionTextActive
+                ]}>
+                  {loc}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Purchase Date */}
+          <Text style={styles.label}>Purchase Date</Text>
+          {Platform.OS === 'web' ? (
+            <View style={styles.dateInputContainer}>
+              <input
+                type="date"
+                value={formPurchaseDate}
+                onChange={(e) => setFormPurchaseDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: 14,
+                  fontSize: 16,
+                  border: 'none',
+                  outline: 'none',
+                  backgroundColor: 'transparent',
+                  color: '#333',
+                  cursor: 'pointer',
+                }}
+              />
+            </View>
+          ) : (
+            <TextInput
+              style={styles.textInput}
+              value={formPurchaseDate}
+              onChangeText={setFormPurchaseDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#999"
+            />
+          )}
+
+          {/* Purchase Price & Efficiency Row */}
+          <View style={styles.rowContainer}>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Purchase Price (MYR)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formPurchasePrice}
+                onChangeText={setFormPurchasePrice}
+                placeholder="e.g., 45000"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Efficiency (%)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formEfficiency}
+                onChangeText={(text) => {
+                  const num = parseInt(text);
+                  if (text === '' || (num >= 0 && num <= 100)) {
+                    setFormEfficiency(text);
+                  }
+                }}
+                placeholder="0-100"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                maxLength={3}
+              />
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && styles.buttonDisabled]}
+            onPress={isEdit ? handleUpdateAsset : handleCreateAsset}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <IconSymbol
+                  name={isEdit ? "checkmark.circle.fill" : "plus.circle.fill"}
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.submitButtonText}>
+                  {isEdit ? 'Update Asset' : 'Add Asset'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Cancel Button */}
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => {
+              isEdit ? setShowEditModal(false) : setShowCreateModal(false);
+              resetForm();
+            }}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
+
+  const renderAssetCard = ({ item }: { item: Asset }) => (
+    <View style={styles.assetCard}>
+      <TouchableOpacity
+        style={styles.assetCardContent}
+        onPress={() => handleOpenEditModal(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.assetHeader}>
+          <View style={styles.assetIcon}>
+            <IconSymbol name="wrench.and.screwdriver.fill" size={24} color="#2E7D32" />
+          </View>
+          <View style={styles.assetTitleSection}>
+            <Text style={styles.assetName} numberOfLines={1}>{item.assetName}</Text>
+            <Text style={styles.assetIdText}>ID: {item.assetId}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+            <Text style={styles.statusText}>{item.status}</Text>
+          </View>
+        </View>
+
+        <View style={styles.assetDetails}>
+          <View style={styles.detailRow}>
+            <IconSymbol name="tag.fill" size={14} color="#666666" />
+            <Text style={styles.detailText}>{item.assetType} • {item.category}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <IconSymbol name="building.2.fill" size={14} color="#666666" />
+            <Text style={styles.detailText}>{item.manufacturer} {item.model}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <IconSymbol name="location.fill" size={14} color="#666666" />
+            <Text style={styles.detailText}>{item.location}</Text>
+          </View>
+        </View>
+
+        <View style={styles.assetMetrics}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{item.year}</Text>
+            <Text style={styles.metricLabel}>Year</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{item.efficiency}</Text>
+            <Text style={styles.metricLabel}>Efficiency</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{formatCurrency(item.purchasePrice)}</Text>
+            <Text style={styles.metricLabel}>Price</Text>
+          </View>
+        </View>
+
+        <View style={styles.assetFooter}>
+          <Text style={styles.serialNumber}>S/N: {item.serialNumber || 'N/A'}</Text>
+          <Text style={styles.purchaseDate}>
+            Purchased: {item.purchaseDate || 'N/A'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Delete Button */}
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteAsset(item)}
+      >
+        <IconSymbol name="trash.fill" size={18} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Loading assets...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      
+
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Assets</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addButton}
-              onPress={handleAddAsset}
+              onPress={handleOpenCreateModal}
               activeOpacity={0.8}
             >
               <IconSymbol name="plus" size={24} color="#FFFFFF" />
@@ -316,7 +717,7 @@ export default function AssetsScreen() {
         </View>
 
         <View style={styles.searchContainer}>
-          <IconSymbol name="house.fill" size={20} color="#666666" />
+          <IconSymbol name="magnifyingglass" size={20} color="#666666" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search assets"
@@ -326,8 +727,8 @@ export default function AssetsScreen() {
           />
         </View>
 
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterContainer}
         >
@@ -355,19 +756,40 @@ export default function AssetsScreen() {
       <FlatList
         data={filteredAssets}
         renderItem={renderAssetCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2E7D32']}
+            tintColor="#2E7D32"
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <IconSymbol name="house.fill" size={64} color="#CCCCCC" />
+            <IconSymbol name="wrench.and.screwdriver.fill" size={64} color="#CCCCCC" />
             <Text style={styles.emptyTitle}>No assets found</Text>
             <Text style={styles.emptySubtitle}>
               {searchQuery ? 'Try adjusting your search' : 'Add assets to start tracking your equipment'}
             </Text>
+            <TouchableOpacity
+              style={styles.emptyAddButton}
+              onPress={handleOpenCreateModal}
+            >
+              <IconSymbol name="plus" size={20} color="#FFFFFF" />
+              <Text style={styles.emptyAddButtonText}>Add First Asset</Text>
+            </TouchableOpacity>
           </View>
         }
       />
+
+      {/* Create Modal */}
+      {renderAssetFormModal(false)}
+
+      {/* Edit Modal */}
+      {renderAssetFormModal(true)}
     </SafeAreaView>
   );
 }
@@ -376,6 +798,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFE',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFE',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     backgroundColor: '#FFFFFF',
@@ -400,39 +833,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  aiButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3E5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  aiBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#9C27B0',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  aiBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  viewToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   addButton: {
     width: 48,
@@ -485,17 +885,29 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 24,
+    paddingBottom: 100,
   },
   assetCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  assetCardContent: {
+    flex: 1,
+    padding: 20,
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   assetHeader: {
     flexDirection: 'row',
@@ -520,9 +932,10 @@ const styles = StyleSheet.create({
     color: '#1A237E',
     marginBottom: 2,
   },
-  assetCategory: {
+  assetIdText: {
     fontSize: 12,
-    color: '#666666',
+    color: '#2E7D32',
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -560,7 +973,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metricValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1A237E',
   },
@@ -574,44 +987,19 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: '#E0E0E0',
   },
-  maintenanceInfo: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  maintenanceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  maintenanceLabel: {
-    fontSize: 12,
-    color: '#E65100',
-    fontWeight: '500',
-  },
-  maintenanceDate: {
-    fontSize: 12,
-    color: '#666666',
-  },
   assetFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  conditionBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  conditionText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
   serialNumber: {
     fontSize: 10,
     color: '#999999',
     fontFamily: 'monospace',
+  },
+  purchaseDate: {
+    fontSize: 10,
+    color: '#999999',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -630,5 +1018,168 @@ const styles = StyleSheet.create({
     color: '#999999',
     textAlign: 'center',
     paddingHorizontal: 40,
+    marginBottom: 24,
+  },
+  emptyAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+  },
+  emptyAddButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFE',
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#333',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  generateButton: {
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  generateButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfInput: {
+    flex: 1,
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  optionButtonActive: {
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
+  },
+  optionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#333',
+  },
+  optionTextActive: {
+    color: '#FFFFFF',
+  },
+  statusButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  statusButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#333',
+  },
+  statusButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  dateInputContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+  },
+  submitButton: {
+    backgroundColor: '#2E7D32',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F5',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  cancelButtonText: {
+    color: '#666666',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

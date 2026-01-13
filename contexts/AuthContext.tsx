@@ -25,6 +25,8 @@ export interface AuthContextType {
   // Actions
   login: (credentials: LoginCredentials) => Promise<LoginResponse>;
   logout: () => Promise<void>;
+  updateUser: (userData: Partial<UserData>) => Promise<void>;
+  getToken: () => Promise<string | null>;
   clearError: () => void;
 }
 
@@ -147,6 +149,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
+      // Call backend logout API
+      const token = await AuthStorage.getToken();
+      if (token) {
+        try {
+          await fetch(getApiUrl(API_ENDPOINTS.LOGOUT), {
+            method: 'POST',
+            headers: {
+              ...DEFAULT_HEADERS,
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        } catch (apiError) {
+          console.log('Backend logout failed, continuing with local logout');
+        }
+      }
+      
       // Clear all stored authentication data
       await AuthStorage.clearAll();
       
@@ -169,6 +187,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
+  const updateUser = async (userData: Partial<UserData>): Promise<void> => {
+    try {
+      const currentUser = user;
+      if (currentUser) {
+        const updatedUser = { ...currentUser, ...userData };
+        await AuthStorage.setUserData(updatedUser);
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+    }
+  };
+
+  const getToken = async (): Promise<string | null> => {
+    return await AuthStorage.getToken();
+  };
+
   const contextValue: AuthContextType = {
     isAuthenticated,
     isLoading,
@@ -176,6 +211,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error,
     login,
     logout,
+    updateUser,
+    getToken,
     clearError,
   };
 

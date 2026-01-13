@@ -38,6 +38,7 @@ const MAPPING = {
   'chart.bar.fill': 'bar-chart',
   'person.3.fill': 'groups',
   'gear.fill': 'settings',
+  'plus': 'add',
   
   // Activity Icons
   'person.badge.plus.fill': 'person-add',
@@ -56,16 +57,20 @@ const MAPPING = {
   
   // Additional Icons for screens
   'search': 'search',
+  'magnifyingglass': 'search',
   'filter.fill': 'filter-list',
   'plus.app.fill': 'add-box',
   'phone.fill': 'phone',
   'location.fill': 'location-on',
   'calendar.fill': 'event',
+  'calendar': 'event',
   'clock.fill': 'schedule',
   'star.fill': 'star',
   'settings.fill': 'settings',
   'view.grid': 'view-module',
   'view.list': 'view-list',
+  'tray.fill': 'inbox',
+  'wrench.fill': 'build',
   
   // AI Icons
   'brain.head.profile': 'psychology',
@@ -91,5 +96,6 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const iconName = MAPPING[name] || 'help-outline';
+  return <MaterialIcons color={color} size={size} name={iconName} style={style} />;
 }

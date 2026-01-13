@@ -1,11 +1,23 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+  fetchAreas,
+  createArea,
+  updateArea,
+  deleteArea,
+  type Area,
+  type CreateAreaPayload,
+} from '@/services/areaService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
+  Modal,
+  Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -17,123 +29,62 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// Mock data for areas
-const mockAreas = [
-  {
-    id: 'area1',
-    name: 'Block A - Apple Orchard',
-    phaseName: 'Phase 1',
-    totalArea: 25.5,
-    expectedBlocks: 12,
-    actualBlocks: 12,
-    establishedDate: '2020-03-15',
-    status: 'Active',
-    supervisor: 'John Smith',
-    cropType: 'Apple Trees',
-    plantingDensity: 150,
-    irrigationSystem: 'Drip Irrigation',
-    soilType: 'Loamy',
-    lastInspection: '2024-11-25',
-    nextInspection: '2024-12-10',
-    healthScore: 92,
-    productivity: 'High',
-    notes: 'Excellent growth, ready for winter pruning',
-  },
-  {
-    id: 'area2',
-    name: 'Block B - Citrus Grove',
-    phaseName: 'Phase 2',
-    totalArea: 18.2,
-    expectedBlocks: 8,
-    actualBlocks: 8,
-    establishedDate: '2021-01-20',
-    status: 'Active',
-    supervisor: 'Maria Garcia',
-    cropType: 'Citrus Trees',
-    plantingDensity: 120,
-    irrigationSystem: 'Sprinkler',
-    soilType: 'Sandy Loam',
-    lastInspection: '2024-11-20',
-    nextInspection: '2024-12-05',
-    healthScore: 88,
-    productivity: 'High',
-    notes: 'Good fruit development, monitor for pests',
-  },
-  {
-    id: 'area3',
-    name: 'Block C - Vegetable Fields',
-    phaseName: 'Phase 1',
-    totalArea: 32.0,
-    expectedBlocks: 16,
-    actualBlocks: 14,
-    establishedDate: '2019-08-10',
-    status: 'Maintenance',
-    supervisor: 'Carlos Rodriguez',
-    cropType: 'Mixed Vegetables',
-    plantingDensity: 200,
-    irrigationSystem: 'Drip Irrigation',
-    soilType: 'Clay Loam',
-    lastInspection: '2024-11-15',
-    nextInspection: '2024-11-30',
-    healthScore: 75,
-    productivity: 'Medium',
-    notes: 'Soil improvement needed, drainage issues',
-  },
-  {
-    id: 'area4',
-    name: 'Block D - Greenhouse Complex',
-    phaseName: 'Phase 3',
-    totalArea: 8.5,
-    expectedBlocks: 4,
-    actualBlocks: 4,
-    establishedDate: '2022-05-12',
-    status: 'Active',
-    supervisor: 'Ana Martinez',
-    cropType: 'Tomatoes & Peppers',
-    plantingDensity: 300,
-    irrigationSystem: 'Hydroponic',
-    soilType: 'Controlled Medium',
-    lastInspection: '2024-11-28',
-    nextInspection: '2024-12-12',
-    healthScore: 95,
-    productivity: 'Very High',
-    notes: 'Optimal conditions, excellent yield',
-  },
-  {
-    id: 'area5',
-    name: 'Block E - Experimental Plot',
-    phaseName: 'Phase 2',
-    totalArea: 5.0,
-    expectedBlocks: 2,
-    actualBlocks: 1,
-    establishedDate: '2023-09-01',
-    status: 'Development',
-    supervisor: 'David Wilson',
-    cropType: 'Research Crops',
-    plantingDensity: 100,
-    irrigationSystem: 'Manual',
-    soilType: 'Various',
-    lastInspection: '2024-11-22',
-    nextInspection: '2024-12-08',
-    healthScore: 70,
-    productivity: 'Variable',
-    notes: 'Testing new varieties and techniques',
-  },
-];
+// Status options
+const STATUS_OPTIONS = ['Active', 'Maintenance', 'Development', 'Inactive'];
 
 export default function AreasScreen() {
   const router = useRouter();
-  const [areas, setAreas] = useState(mockAreas);
+
+  // Data states
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // UI states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingArea, setEditingArea] = useState<Area | null>(null);
+
+  // Form states
+  const [formPhaseName, setFormPhaseName] = useState('');
+  const [formPhaseNumber, setFormPhaseNumber] = useState('');
+  const [formExpectedBlocks, setFormExpectedBlocks] = useState('');
+  const [formStatus, setFormStatus] = useState('Development');
+  const [formEstablishedDate, setFormEstablishedDate] = useState('');
 
   const filters = ['All', 'Active', 'Maintenance', 'Development'];
 
+  // Load areas from API
+  const loadAreas = useCallback(async () => {
+    try {
+      const response = await fetchAreas();
+      if (response.success && response.data) {
+        setAreas(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading areas:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAreas();
+  }, [loadAreas]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadAreas();
+  }, [loadAreas]);
+
   const filteredAreas = areas.filter(area => {
-    const matchesSearch = area.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         area.phaseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         area.cropType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      area.phaseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      area.phaseNumber.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'All' || area.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
@@ -143,6 +94,7 @@ export default function AreasScreen() {
       case 'Active': return '#4CAF50';
       case 'Maintenance': return '#FF9800';
       case 'Development': return '#2196F3';
+      case 'Inactive': return '#9E9E9E';
       default: return '#666666';
     }
   };
@@ -153,130 +105,441 @@ export default function AreasScreen() {
       case 'High': return '#8BC34A';
       case 'Medium': return '#FFC107';
       case 'Low': return '#FF9800';
-      case 'Variable': return '#9C27B0';
       default: return '#666666';
     }
   };
 
-  const getHealthScoreColor = (score: number) => {
-    if (score >= 90) return '#4CAF50';
-    if (score >= 80) return '#8BC34A';
-    if (score >= 70) return '#FFC107';
-    if (score >= 60) return '#FF9800';
-    return '#F44336';
+  // Reset form
+  const resetForm = () => {
+    setFormPhaseName('');
+    setFormPhaseNumber('');
+    setFormExpectedBlocks('');
+    setFormStatus('Development');
+    setFormEstablishedDate('');
+    setEditingArea(null);
   };
 
-  const handleAreaPress = (area: any) => {
-    Alert.alert(
-      area.name,
-      `Phase: ${area.phaseName}\nCrop Type: ${area.cropType}\nTotal Area: ${area.totalArea} hectares\nBlocks: ${area.actualBlocks}/${area.expectedBlocks}\nHealth Score: ${area.healthScore}%\nProductivity: ${area.productivity}\n\nSupervisor: ${area.supervisor}\nIrrigation: ${area.irrigationSystem}\nSoil Type: ${area.soilType}\n\nNotes: ${area.notes}`,
-      [
-        { text: 'View Blocks', onPress: () => Alert.alert('View Blocks', 'Block view functionality coming soon') },
-        { text: 'Schedule Inspection', onPress: () => Alert.alert('Schedule Inspection', 'Inspection scheduling coming soon') },
-        { text: 'Close', style: 'cancel' }
-      ]
-    );
+  // Open create modal
+  const handleOpenCreateModal = () => {
+    resetForm();
+    // Auto-generate phase number
+    const nextNumber = areas.length + 1;
+    setFormPhaseNumber(nextNumber.toString());
+    setShowCreateModal(true);
   };
 
-  const handleAddArea = () => {
-  router.push('/create-form?type=area');
-};
+  // Open edit modal
+  const handleOpenEditModal = (area: Area) => {
+    setEditingArea(area);
+    setFormPhaseName(area.phaseName);
+    setFormPhaseNumber(area.phaseNumber);
+    setFormExpectedBlocks(area.expectedBlocks.toString());
+    setFormStatus(area.status);
+    setFormEstablishedDate(area.establishedDate);
+    setShowEditModal(true);
+  };
 
-  const renderAreaCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.areaCard} 
-      onPress={() => handleAreaPress(item)}
-      activeOpacity={0.8}
+  // Create area
+  const handleCreateArea = async () => {
+    if (!formPhaseName.trim()) {
+      showAlert('Error', 'Phase name is required');
+      return;
+    }
+    if (!formPhaseNumber.trim()) {
+      showAlert('Error', 'Phase number is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: CreateAreaPayload = {
+        phaseName: formPhaseName.trim(),
+        phaseNumber: formPhaseNumber.trim(),
+        expectedBlocks: parseInt(formExpectedBlocks) || 0,
+        status: formStatus,
+        establishedDate: formEstablishedDate || new Date().toISOString().split('T')[0],
+      };
+
+      const response = await createArea(payload);
+      if (response.success && response.data) {
+        setAreas(prev => [...prev, response.data!]);
+        setShowCreateModal(false);
+        resetForm();
+        showAlert('Success', 'Area/Phase added successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to create area');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to create area. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Update area
+  const handleUpdateArea = async () => {
+    if (!editingArea) return;
+
+    if (!formPhaseName.trim()) {
+      showAlert('Error', 'Phase name is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        phaseName: formPhaseName.trim(),
+        phaseNumber: formPhaseNumber.trim(),
+        expectedBlocks: parseInt(formExpectedBlocks) || 0,
+        status: formStatus,
+        establishedDate: formEstablishedDate,
+      };
+
+      const response = await updateArea(editingArea.id, payload);
+      if (response.success && response.data) {
+        setAreas(prev => prev.map(a => a.id === editingArea.id ? response.data! : a));
+        setShowEditModal(false);
+        resetForm();
+        showAlert('Success', 'Area/Phase updated successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to update area');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to update area. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete area
+  const handleDeleteArea = async (area: Area) => {
+    const confirmDelete = async () => {
+      if (Platform.OS === 'web') {
+        return window.confirm(`Are you sure you want to delete "${area.phaseName}"?`);
+      }
+      return new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Delete Area',
+          `Are you sure you want to delete "${area.phaseName}"?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+          ]
+        );
+      });
+    };
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+      const response = await deleteArea(area.id);
+      if (response.success) {
+        setAreas(prev => prev.filter(a => a.id !== area.id));
+        showAlert('Success', 'Area/Phase deleted successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to delete area');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to delete area. Please try again.');
+    }
+  };
+
+  // Show alert (cross-platform)
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  // Navigate to create block
+  const handleCreateBlock = (area: Area) => {
+    router.push(`/create-block?phaseName=${encodeURIComponent(area.phaseName)}&phaseNumber=${area.phaseNumber}`);
+  };
+
+  // Render area form modal
+  const renderAreaFormModal = (isEdit: boolean) => (
+    <Modal
+      visible={isEdit ? showEditModal : showCreateModal}
+      animationType="slide"
     >
-      <View style={styles.areaHeader}>
-        <View style={styles.areaIcon}>
-          <IconSymbol name="map.fill" size={24} color="#2E7D32" />
-        </View>
-        <View style={styles.areaTitleSection}>
-          <Text style={styles.areaName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.areaPhase}>{item.phaseName} • {item.cropType}</Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
+      <SafeAreaView style={styles.modalContainer}>
+        <ScrollView
+          contentContainerStyle={styles.modalContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                isEdit ? setShowEditModal(false) : setShowCreateModal(false);
+                resetForm();
+              }}
+            >
+              <IconSymbol name="chevron.left" size={24} color="#666" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {isEdit ? 'Edit Area/Phase' : 'Add New Area/Phase'}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-      <View style={styles.areaMetrics}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>{item.totalArea}</Text>
-          <Text style={styles.metricLabel}>Hectares</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>{item.actualBlocks}/{item.expectedBlocks}</Text>
-          <Text style={styles.metricLabel}>Blocks</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={[styles.metricValue, { color: getHealthScoreColor(item.healthScore) }]}>
-            {item.healthScore}%
-          </Text>
-          <Text style={styles.metricLabel}>Health</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={[styles.metricValue, { color: getProductivityColor(item.productivity) }]}>
-            {item.productivity}
-          </Text>
-          <Text style={styles.metricLabel}>Productivity</Text>
-        </View>
-      </View>
+          {/* Phase Name */}
+          <Text style={styles.label}>Phase Name *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formPhaseName}
+            onChangeText={setFormPhaseName}
+            placeholder="e.g., Phase A, North Block"
+            placeholderTextColor="#999"
+          />
 
-      <View style={styles.areaDetails}>
-        <View style={styles.detailRow}>
-          <IconSymbol name="person.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>Supervisor: {item.supervisor}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <IconSymbol name="house.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>Irrigation: {item.irrigationSystem}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <IconSymbol name="house.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>Soil: {item.soilType}</Text>
-        </View>
-      </View>
+          {/* Phase Number */}
+          <Text style={styles.label}>Phase Number *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formPhaseNumber}
+            onChangeText={setFormPhaseNumber}
+            placeholder="e.g., 1, 2, 3"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+          />
 
-      <View style={styles.inspectionInfo}>
-        <View style={styles.inspectionItem}>
-          <Text style={styles.inspectionLabel}>Last Inspection:</Text>
-          <Text style={styles.inspectionDate}>{item.lastInspection}</Text>
-        </View>
-        <View style={styles.inspectionItem}>
-          <Text style={styles.inspectionLabel}>Next Due:</Text>
-          <Text style={[
-            styles.inspectionDate,
-            { color: new Date(item.nextInspection) < new Date() ? '#F44336' : '#666666' }
-          ]}>
-            {item.nextInspection}
-          </Text>
-        </View>
-      </View>
+          {/* Expected Number of Blocks */}
+          <Text style={styles.label}>Expected Number of Blocks</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formExpectedBlocks}
+            onChangeText={setFormExpectedBlocks}
+            placeholder="e.g., 12"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+          />
 
-      <View style={styles.areaFooter}>
-        <Text style={styles.establishedDate}>Established: {item.establishedDate}</Text>
-        <Text style={styles.plantingDensity}>{item.plantingDensity} plants/ha</Text>
-      </View>
-    </TouchableOpacity>
+          {/* Status */}
+          <Text style={styles.label}>Status</Text>
+          <View style={styles.optionsContainer}>
+            {STATUS_OPTIONS.map(status => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.statusButton,
+                  formStatus === status && { backgroundColor: getStatusColor(status) }
+                ]}
+                onPress={() => setFormStatus(status)}
+              >
+                <Text style={[
+                  styles.statusButtonText,
+                  formStatus === status && styles.statusButtonTextActive
+                ]}>
+                  {status}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Established Date */}
+          <Text style={styles.label}>Established Date</Text>
+          {Platform.OS === 'web' ? (
+            <View style={styles.dateInputContainer}>
+              <input
+                type="date"
+                value={formEstablishedDate}
+                onChange={(e) => setFormEstablishedDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: 14,
+                  fontSize: 16,
+                  border: 'none',
+                  outline: 'none',
+                  backgroundColor: 'transparent',
+                  color: '#333',
+                  cursor: 'pointer',
+                }}
+              />
+            </View>
+          ) : (
+            <TextInput
+              style={styles.textInput}
+              value={formEstablishedDate}
+              onChangeText={setFormEstablishedDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#999"
+            />
+          )}
+
+          {/* Summary */}
+          {formPhaseName && (
+            <View style={styles.summaryBox}>
+              <IconSymbol name="map.fill" size={20} color="#2E7D32" />
+              <View style={styles.summaryContent}>
+                <Text style={styles.summaryTitle}>{formPhaseName}</Text>
+                <Text style={styles.summarySubtitle}>
+                  Phase #{formPhaseNumber} • {formExpectedBlocks || '0'} expected blocks • {formStatus}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && styles.buttonDisabled]}
+            onPress={isEdit ? handleUpdateArea : handleCreateArea}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <IconSymbol
+                  name={isEdit ? "checkmark.circle.fill" : "plus.circle.fill"}
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.submitButtonText}>
+                  {isEdit ? 'Update Area' : 'Add Area'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Cancel Button */}
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => {
+              isEdit ? setShowEditModal(false) : setShowCreateModal(false);
+              resetForm();
+            }}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
+
+  const renderAreaCard = ({ item }: { item: Area }) => (
+    <View style={styles.areaCard}>
+      <TouchableOpacity
+        style={styles.areaCardContent}
+        onPress={() => handleOpenEditModal(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.areaHeader}>
+          <View style={styles.areaIcon}>
+            <IconSymbol name="map.fill" size={24} color="#2E7D32" />
+          </View>
+          <View style={styles.areaTitleSection}>
+            <Text style={styles.areaName} numberOfLines={1}>{item.phaseName}</Text>
+            <Text style={styles.areaPhase}>Phase #{item.phaseNumber}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+            <Text style={styles.statusText}>{item.status}</Text>
+          </View>
+        </View>
+
+        <View style={styles.areaMetrics}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{item.expectedBlocks}</Text>
+            <Text style={styles.metricLabel}>Expected Blocks</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{item.actualBlocks || 0}</Text>
+            <Text style={styles.metricLabel}>Actual Blocks</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{item.totalArea?.toFixed(1) || '0'}</Text>
+            <Text style={styles.metricLabel}>Hectares</Text>
+          </View>
+        </View>
+
+        {item.healthScore !== undefined && item.healthScore > 0 && (
+          <View style={styles.healthContainer}>
+            <View style={styles.healthBar}>
+              <View 
+                style={[
+                  styles.healthFill, 
+                  { 
+                    width: `${item.healthScore}%`,
+                    backgroundColor: item.healthScore >= 80 ? '#4CAF50' : item.healthScore >= 60 ? '#FF9800' : '#F44336'
+                  }
+                ]} 
+              />
+            </View>
+            <Text style={styles.healthText}>{item.healthScore}% Health</Text>
+          </View>
+        )}
+
+        <View style={styles.areaFooter}>
+          <Text style={styles.establishedDate}>
+            Established: {item.establishedDate || 'N/A'}
+          </Text>
+          {item.productivity && item.productivity !== 'N/A' && (
+            <View style={[styles.productivityBadge, { backgroundColor: getProductivityColor(item.productivity) + '20' }]}>
+              <Text style={[styles.productivityText, { color: getProductivityColor(item.productivity) }]}>
+                {item.productivity}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity
+            style={styles.viewBlocksButton}
+            onPress={() => router.push(`/blocks?phaseName=${encodeURIComponent(item.phaseName)}&phaseNumber=${item.phaseNumber}`)}
+          >
+            <IconSymbol name="square.grid.2x2.fill" size={16} color="#1976D2" />
+            <Text style={styles.viewBlocksButtonText}>View Blocks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addBlockButton}
+            onPress={() => handleCreateBlock(item)}
+          >
+            <IconSymbol name="plus" size={16} color="#2E7D32" />
+            <Text style={styles.addBlockButtonText}>Add Block</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+
+      {/* Delete Button */}
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteArea(item)}
+      >
+        <IconSymbol name="trash.fill" size={18} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Loading areas...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Areas</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addButton}
-              onPress={handleAddArea}
+              onPress={handleOpenCreateModal}
               activeOpacity={0.8}
             >
               <IconSymbol name="plus" size={24} color="#FFFFFF" />
@@ -286,10 +549,10 @@ export default function AreasScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <IconSymbol name="house.fill" size={20} color="#666666" />
+          <IconSymbol name="magnifyingglass" size={20} color="#666666" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search areas by phase, block"
+            placeholder="Search areas by phase name or number"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#999999"
@@ -297,8 +560,8 @@ export default function AreasScreen() {
         </View>
 
         {/* Filter Tabs */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterContainer}
         >
@@ -327,19 +590,40 @@ export default function AreasScreen() {
       <FlatList
         data={filteredAreas}
         renderItem={renderAreaCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2E7D32']}
+            tintColor="#2E7D32"
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <IconSymbol name="map.fill" size={64} color="#CCCCCC" />
             <Text style={styles.emptyTitle}>No areas found</Text>
             <Text style={styles.emptySubtitle}>
-              {searchQuery ? 'Try adjusting your search' : 'Add areas to start managing your farm blocks'}
+              {searchQuery ? 'Try adjusting your search' : 'Add areas to start managing your farm phases'}
             </Text>
+            <TouchableOpacity
+              style={styles.emptyAddButton}
+              onPress={handleOpenCreateModal}
+            >
+              <IconSymbol name="plus" size={20} color="#FFFFFF" />
+              <Text style={styles.emptyAddButtonText}>Add First Area</Text>
+            </TouchableOpacity>
           </View>
         }
       />
+
+      {/* Create Modal */}
+      {renderAreaFormModal(false)}
+
+      {/* Edit Modal */}
+      {renderAreaFormModal(true)}
     </SafeAreaView>
   );
 }
@@ -348,6 +632,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFE',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFE',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     backgroundColor: '#FFFFFF',
@@ -372,14 +667,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  viewToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   addButton: {
     width: 48,
@@ -432,17 +719,29 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 24,
+    paddingBottom: 100,
   },
   areaCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  areaCardContent: {
+    flex: 1,
+    padding: 20,
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   areaHeader: {
     flexDirection: 'row',
@@ -462,14 +761,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   areaName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1A237E',
     marginBottom: 2,
   },
   areaPhase: {
-    fontSize: 12,
-    color: '#666666',
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -477,7 +777,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -487,7 +787,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginBottom: 16,
   },
   metricItem: {
@@ -495,66 +795,102 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricValue: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1A237E',
   },
   metricLabel: {
     fontSize: 10,
     color: '#666666',
-    marginTop: 2,
+    marginTop: 4,
+    textAlign: 'center',
   },
   metricDivider: {
     width: 1,
-    height: 20,
+    height: 30,
     backgroundColor: '#E0E0E0',
   },
-  areaDetails: {
-    marginBottom: 16,
-  },
-  detailRow: {
+  healthContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  detailText: {
-    fontSize: 12,
-    color: '#666666',
-    marginLeft: 8,
-  },
-  inspectionInfo: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-    padding: 12,
     marginBottom: 16,
+    gap: 12,
   },
-  inspectionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+  healthBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  inspectionLabel: {
+  healthFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  healthText: {
     fontSize: 12,
-    color: '#1565C0',
-    fontWeight: '500',
-  },
-  inspectionDate: {
-    fontSize: 12,
-    color: '#666666',
+    fontWeight: '600',
+    color: '#666',
+    width: 80,
+    textAlign: 'right',
   },
   areaFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
   },
   establishedDate: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#999999',
   },
-  plantingDensity: {
-    fontSize: 10,
-    color: '#999999',
-    fontFamily: 'monospace',
+  productivityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  productivityText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  viewBlocksButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#1976D2',
+  },
+  viewBlocksButtonText: {
+    color: '#1976D2',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  addBlockButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    borderStyle: 'dashed',
+  },
+  addBlockButtonText: {
+    color: '#2E7D32',
+    fontSize: 13,
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -573,5 +909,147 @@ const styles = StyleSheet.create({
     color: '#999999',
     textAlign: 'center',
     paddingHorizontal: 40,
+    marginBottom: 24,
+  },
+  emptyAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+  },
+  emptyAddButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFE',
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#333',
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statusButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  statusButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  statusButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  dateInputContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+  },
+  summaryBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    gap: 12,
+  },
+  summaryContent: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  summarySubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  submitButton: {
+    backgroundColor: '#2E7D32',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F5',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  cancelButtonText: {
+    color: '#666666',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

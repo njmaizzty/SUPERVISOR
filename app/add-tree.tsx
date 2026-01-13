@@ -1,10 +1,9 @@
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { createTree } from '@/services/treeService';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -15,291 +14,499 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
+
+// Constants
+const TAG_TYPES = ['QR Code', 'RFID', 'Barcode', 'Metal Tag', 'Paint Mark', 'None'];
+const PALM_VARIETIES = ['Tenera', 'Dura', 'Pisifera', 'MPOB Clone', 'Deli Dura', 'Nigerian Tenera'];
+const DISEASES = [
+  'None',
+  'Ganoderma',
+  'Basal Stem Rot',
+  'Bud Rot',
+  'Leaf Spot',
+  'Crown Disease',
+  'Trunk Rot',
+  'Root Rot',
+  'Nutrient Deficiency',
+  'Pest Infestation',
+];
+const STATUS_OPTIONS = ['Healthy', 'Diseased', 'Recovering', 'Dead', 'Replanted', 'Under Observation'];
 
 export default function AddTreeScreen() {
   const router = useRouter();
-  const { phaseData, blockData } = useLocalSearchParams();
-  const parsedPhase = phaseData ? JSON.parse(phaseData as string) : {};
-  const parsedBlock = blockData ? JSON.parse(blockData as string) : {};
+  const { blockName } = useLocalSearchParams();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [treeData, setTreeData] = useState<any>({
+  const [formData, setFormData] = useState({
     treeNumber: '',
-    block: parsedBlock.blockName || '',
+    block: (blockName as string) || '',
     tagType: '',
-    tagID: '',
-    diseases: '',
+    tagId: '',
+    diseases: ['None'] as string[],
     notes: '',
     variety: '',
     plantingDate: '',
     age: '',
     height: '',
     trunkCircumference: '',
-    status: '',
-    healthScore: '',
+    status: 'Healthy',
+    healthScore: '100',
     estimatedYield: '',
   });
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // Set block from params
+  useEffect(() => {
+    if (blockName) {
+      setFormData(prev => ({
+        ...prev,
+        block: blockName as string,
+      }));
+    }
+  }, [blockName]);
 
   const handleInputChange = (field: string, value: string) => {
-    setTreeData((prev: any) => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Auto-calculate age from planting date
+    if (field === 'plantingDate' && value) {
+      const plantDate = new Date(value);
+      const today = new Date();
+      const ageYears = ((today.getTime() - plantDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1);
+      if (parseFloat(ageYears) >= 0) {
+        setFormData(prev => ({ ...prev, age: ageYears }));
+      }
+    }
   };
 
-  const handleAddTree = () => {
-    if (!treeData.treeNumber) {
-      Alert.alert("Error", "Tree Number is required.");
+  const toggleDisease = (disease: string) => {
+    setFormData(prev => {
+      const currentDiseases = prev.diseases;
+      if (disease === 'None') {
+        return { ...prev, diseases: ['None'] };
+      }
+      
+      let newDiseases = currentDiseases.filter(d => d !== 'None');
+      if (newDiseases.includes(disease)) {
+        newDiseases = newDiseases.filter(d => d !== disease);
+      } else {
+        newDiseases.push(disease);
+      }
+      return { ...prev, diseases: newDiseases.length === 0 ? ['None'] : newDiseases };
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Healthy': return '#4CAF50';
+      case 'Diseased': return '#F44336';
+      case 'Recovering': return '#FF9800';
+      case 'Dead': return '#9E9E9E';
+      case 'Replanted': return '#2196F3';
+      case 'Under Observation': return '#9C27B0';
+      default: return '#2E7D32';
+    }
+  };
+
+  const showAlert = (title: string, message: string, buttons?: any[]) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+      if (buttons && buttons.length > 0 && title === 'Success') {
+        router.back();
+      }
+    } else {
+      Alert.alert(title, message, buttons);
+    }
+  };
+
+  const handleSubmit = async () => {
+    // Validation
+    if (!formData.treeNumber || !formData.block) {
+      showAlert('Missing Info', 'Please fill in Tree Number and Block.');
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push({
-        pathname: "/areas",
-        params: {
-          areaData: JSON.stringify({
-            phase: parsedPhase,
-            block: parsedBlock,
-            trees: [treeData],
-          }),
-        },
+    try {
+      const response = await createTree({
+        treeNumber: formData.treeNumber,
+        block: formData.block,
+        tagType: formData.tagType,
+        tagId: formData.tagId,
+        diseases: formData.diseases,
+        notes: formData.notes,
+        variety: formData.variety,
+        plantingDate: formData.plantingDate,
+        age: formData.age,
+        height: formData.height,
+        trunkCircumference: formData.trunkCircumference,
+        status: formData.status,
+        healthScore: formData.healthScore,
+        estimatedYield: formData.estimatedYield,
       });
-    }, 1000);
-  };
 
-  const numbers1to100 = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
-  const lettersAtoZ = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
-  const tagTypes = ["Metal", "Plastic"];
-  const varieties = ["Dura", "Tenera", "Hybrid"];
-  const statuses = ["Active", "Inactive", "Dead"];
+      if (response.success) {
+        if (Platform.OS === 'web') {
+          alert(`Success: Tree #${formData.treeNumber} added successfully!`);
+          router.back();
+        } else {
+          Alert.alert(
+            'Success',
+            `Tree #${formData.treeNumber} added successfully!`,
+            [
+              {
+                text: 'Add Another Tree',
+                onPress: () => {
+                  // Reset form but keep block info
+                  setFormData(prev => ({
+                    ...prev,
+                    treeNumber: '',
+                    tagId: '',
+                    notes: '',
+                    height: '',
+                    trunkCircumference: '',
+                    estimatedYield: '',
+                    diseases: ['None'],
+                  }));
+                },
+              },
+              {
+                text: 'Done',
+                onPress: () => router.back(),
+              },
+            ]
+          );
+        }
+      } else {
+        showAlert('Error', response.error || 'Failed to add tree. Please try again.');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to add tree. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol name="chevron.left" size={24} color="#2E7D32" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add New Tree</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Add Tree</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.form}>
+            {/* Basic Info Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🌴 Tree Identification</Text>
+            </View>
+
             {/* Tree Number */}
-            <Text style={styles.label}>Tree Number</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={treeData.treeNumber}
-                onValueChange={(itemValue) => handleInputChange("treeNumber", itemValue)}
-              >
-                {numbers1to100.map((num) => (
-                  <Picker.Item key={num} label={num} value={num} />
-                ))}
-              </Picker>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Tree Number *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. T001"
+                value={formData.treeNumber}
+                onChangeText={(text) => handleInputChange('treeNumber', text)}
+                placeholderTextColor="#999"
+              />
             </View>
 
             {/* Block */}
-            <Text style={styles.label}>Block</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={treeData.block}
-                onValueChange={(itemValue) => handleInputChange("block", itemValue)}
-              >
-                {lettersAtoZ.map((letter) => (
-                  <Picker.Item key={letter} label={letter} value={letter} />
-                ))}
-              </Picker>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Block *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Block A-1"
+                value={formData.block}
+                onChangeText={(text) => handleInputChange('block', text)}
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Tag Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🏷️ Tag Information</Text>
             </View>
 
             {/* Tag Type */}
-            <Text style={styles.label}>Tag Type</Text>
-            <View style={styles.optionContainer}>
-              {tagTypes.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.optionButton,
-                    treeData.tagType === type && styles.optionSelected,
-                  ]}
-                  onPress={() => handleInputChange("tagType", type)}
-                >
-                  <Text>{type}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Tag Type</Text>
+              <View style={styles.optionList}>
+                {TAG_TYPES.map((tag) => (
+                  <TouchableOpacity
+                    key={tag}
+                    style={[
+                      styles.optionButton,
+                      formData.tagType === tag && styles.optionButtonActive,
+                    ]}
+                    onPress={() => handleInputChange('tagType', tag)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        formData.tagType === tag && styles.optionTextActive,
+                      ]}
+                    >
+                      {tag}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-            {treeData.tagType ? <Text>Selected: {treeData.tagType}</Text> : null}
 
             {/* Tag ID */}
-            <Text style={styles.label}>Tag ID</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="T-001"
-              value={treeData.tagID}
-              onChangeText={(text) => handleInputChange("tagID", text)}
-            />
-
-            {/* Diseases */}
-            <Text style={styles.label}>Diseases</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="None"
-              value={treeData.diseases}
-              onChangeText={(text) => handleInputChange("diseases", text)}
-            />
-
-            {/* Notes */}
-            <Text style={styles.label}>Notes</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Additional notes..."
-              value={treeData.notes}
-              onChangeText={(text) => handleInputChange("notes", text)}
-            />
-
-            {/* Variety */}
-            <Text style={styles.label}>Variety</Text>
-            <View style={styles.optionContainer}>
-              {varieties.map((v) => (
-                <TouchableOpacity
-                  key={v}
-                  style={[
-                    styles.optionButton,
-                    treeData.variety === v && styles.optionSelected,
-                  ]}
-                  onPress={() => handleInputChange("variety", v)}
-                >
-                  <Text>{v}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {treeData.variety ? <Text>Selected: {treeData.variety}</Text> : null}
-
-            {/* Planting Date */}
-            <Text style={styles.label}>Planting Date</Text>
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text>{treeData.plantingDate || "Select date"}</Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={treeData.plantingDate ? new Date(treeData.plantingDate) : new Date()}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (selectedDate) {
-                    handleInputChange(
-                      "plantingDate",
-                      selectedDate.toISOString().split("T")[0]
-                    );
-                  }
-                }}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Tag ID</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. TAG-001-A1"
+                value={formData.tagId}
+                onChangeText={(text) => handleInputChange('tagId', text)}
+                placeholderTextColor="#999"
               />
-            )}
-
-            {/* Age */}
-            <Text style={styles.label}>Age (years)</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={treeData.age}
-                onValueChange={(itemValue) => handleInputChange("age", itemValue)}
-              >
-                {numbers1to100.map((num) => (
-                  <Picker.Item key={num} label={num} value={num} />
-                ))}
-              </Picker>
             </View>
 
-            {/* Height */}
-            <Text style={styles.label}>Height (cm)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="250"
-              keyboardType="numeric"
-              value={treeData.height}
-              onChangeText={(text) => handleInputChange("height", text)}
-            />
-
-            {/* Trunk Circumference */}
-            <Text style={styles.label}>Trunk Circumference (cm)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="35"
-              keyboardType="numeric"
-              value={treeData.trunkCircumference}
-              onChangeText={(text) => handleInputChange("trunkCircumference", text)}
-            />
+            {/* Health Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>💚 Health Information</Text>
+            </View>
 
             {/* Status */}
-            <Text style={styles.label}>Status</Text>
-            <View style={styles.optionContainer}>
-              {statuses.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[
-                    styles.optionButton,
-                    treeData.status === s && styles.optionSelected,
-                  ]}
-                  onPress={() => handleInputChange("status", s)}
-                >
-                  <Text>{s}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Status</Text>
+              <View style={styles.optionList}>
+                {STATUS_OPTIONS.map((status) => (
+                  <TouchableOpacity
+                    key={status}
+                    style={[
+                      styles.optionButton,
+                      formData.status === status && { backgroundColor: getStatusColor(status), borderColor: getStatusColor(status) },
+                    ]}
+                    onPress={() => handleInputChange('status', status)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        formData.status === status && styles.optionTextActive,
+                      ]}
+                    >
+                      {status}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-            {treeData.status ? <Text>Selected: {treeData.status}</Text> : null}
 
             {/* Health Score */}
-            <Text style={styles.label}>Health Score (%)</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={treeData.healthScore}
-                onValueChange={(itemValue) => handleInputChange("healthScore", itemValue)}
-              >
-                {numbers1to100.map((num) => (
-                  <Picker.Item key={num} label={num} value={num} />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Health Score (0-100)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 100"
+                value={formData.healthScore}
+                onChangeText={(text) => handleInputChange('healthScore', text)}
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Diseases */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Diseases</Text>
+              <View style={styles.optionList}>
+                {DISEASES.map((disease) => (
+                  <TouchableOpacity
+                    key={disease}
+                    style={[
+                      styles.optionButton,
+                      formData.diseases.includes(disease) && (disease === 'None' ? styles.noneActive : styles.diseaseActive),
+                    ]}
+                    onPress={() => toggleDisease(disease)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        formData.diseases.includes(disease) && styles.optionTextActive,
+                      ]}
+                    >
+                      {disease}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
-              </Picker>
+              </View>
+              {formData.diseases.length > 0 && !formData.diseases.includes('None') && (
+                <Text style={styles.selectedText}>
+                  Selected: {formData.diseases.join(', ')}
+                </Text>
+              )}
+            </View>
+
+            {/* Palm Details Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🌴 Palm Details</Text>
+            </View>
+
+            {/* Variety */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Variety</Text>
+              <View style={styles.optionList}>
+                {PALM_VARIETIES.map((variety) => (
+                  <TouchableOpacity
+                    key={variety}
+                    style={[
+                      styles.optionButton,
+                      formData.variety === variety && styles.optionButtonActive,
+                    ]}
+                    onPress={() => handleInputChange('variety', variety)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        formData.variety === variety && styles.optionTextActive,
+                      ]}
+                    >
+                      {variety}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Planting Date */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Planting Date</Text>
+              {Platform.OS === 'web' ? (
+                <View style={styles.dateInputContainer}>
+                  <input
+                    type="date"
+                    value={formData.plantingDate}
+                    onChange={(e) => handleInputChange('plantingDate', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: 14,
+                      fontSize: 16,
+                      border: 'none',
+                      outline: 'none',
+                      backgroundColor: 'transparent',
+                      color: '#333',
+                      cursor: 'pointer',
+                    }}
+                  />
+                </View>
+              ) : (
+                <TextInput
+                  style={styles.input}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.plantingDate}
+                  onChangeText={(text) => handleInputChange('plantingDate', text)}
+                  placeholderTextColor="#999"
+                />
+              )}
+            </View>
+
+            {/* Age */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Age (Years)</Text>
+              <TextInput
+                style={[styles.input, styles.readOnly]}
+                placeholder="Auto-calculated from planting date"
+                value={formData.age}
+                editable={false}
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Measurements Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>📏 Measurements</Text>
+            </View>
+
+            {/* Height & Trunk Circumference */}
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Height (m)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 12.5"
+                  value={formData.height}
+                  onChangeText={(text) => handleInputChange('height', text)}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Trunk Circumference (cm)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 180"
+                  value={formData.trunkCircumference}
+                  onChangeText={(text) => handleInputChange('trunkCircumference', text)}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+              </View>
             </View>
 
             {/* Estimated Yield */}
-            <Text style={styles.label}>Estimated Yield (kg)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="250"
-              keyboardType="numeric"
-              value={treeData.estimatedYield}
-              onChangeText={(text) => handleInputChange("estimatedYield", text)}
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Estimated Yield (kg/year)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 200"
+                value={formData.estimatedYield}
+                onChangeText={(text) => handleInputChange('estimatedYield', text)}
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Notes */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Notes</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Additional observations about this tree..."
+                value={formData.notes}
+                onChangeText={(text) => handleInputChange('notes', text)}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                placeholderTextColor="#999"
+              />
+            </View>
           </View>
         </ScrollView>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-            onPress={handleAddTree}
+            onPress={handleSubmit}
             disabled={isLoading}
           >
-            <Text style={styles.submitButtonText}>
-              {isLoading ? "Adding Tree..." : "Add Tree"}
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
+                <Text style={styles.submitButtonText}>Add Tree</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -308,32 +515,167 @@ export default function AddTreeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFE" },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFE',
+  },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingVertical: 16,
-    backgroundColor: "#fff",
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: '#F0F0F0',
   },
-  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#E8F5E8", justifyContent: "center", alignItems: "center" },
-  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#1A237E" },
-  placeholder: { width: 40 },
-  keyboardView: { flex: 1 },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 20 },
-  form: { padding: 24 },
-  label: { fontSize: 16, fontWeight: "600", color: "#333333", marginBottom: 8 },
-  input: { height: 52, borderWidth: 2, borderColor: "#E0E0E0", borderRadius: 12, paddingHorizontal: 16, fontSize: 16, backgroundColor: "#FFFFFF", color: "#333333", marginBottom: 20 },
-  pickerContainer: { borderWidth: 2, borderColor: "#E0E0E0", borderRadius: 12, marginBottom: 20 },
-  optionContainer: { flexDirection: "row", gap: 12, flexWrap: "wrap", marginBottom: 8 },
-  optionButton: { paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: "#999999", borderRadius: 8 },
-  optionSelected: { backgroundColor: "#2E7D32", borderColor: "#2E7D32", color: "#FFFFFF" },
-  footer: { padding: 24, backgroundColor: "#FFFFFF", borderTopWidth: 1, borderTopColor: "#F0F0F0" },
-  submitButton: { height: 52, backgroundColor: "#2E7D32", borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  submitButtonDisabled: { backgroundColor: "#CCCCCC" },
-  submitButtonText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F5E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  form: {
+    padding: 24,
+  },
+  sectionHeader: {
+    marginTop: 24,
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#2E7D32',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  input: {
+    height: 52,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    color: '#333333',
+  },
+  textArea: {
+    height: 100,
+    paddingTop: 16,
+    textAlignVertical: 'top',
+  },
+  readOnly: {
+    backgroundColor: '#F5F5F5',
+    color: '#666666',
+  },
+  dateInputContainer: {
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  halfWidth: {
+    flex: 1,
+  },
+  optionList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+  },
+  optionButtonActive: {
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
+  },
+  noneActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  diseaseActive: {
+    backgroundColor: '#F44336',
+    borderColor: '#F44336',
+  },
+  optionText: {
+    fontSize: 14,
+    color: '#333333',
+    fontWeight: '500',
+  },
+  optionTextActive: {
+    color: '#FFFFFF',
+  },
+  selectedText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#F44336',
+    fontWeight: '600',
+  },
+  footer: {
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  submitButton: {
+    height: 52,
+    backgroundColor: '#2E7D32',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });

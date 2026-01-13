@@ -1,12 +1,24 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+  fetchWorkers,
+  createWorker,
+  updateWorker,
+  deleteWorker,
+  type Worker,
+  type CreateWorkerPayload,
+} from '@/services/workerService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
   Linking,
+  Modal,
+  Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -18,112 +30,88 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// Mock data for workers
-const mockWorkers = [
-  {
-    id: 'worker1',
-    name: 'John Smith',
-    email: 'john.smith@farm.com',
-    phone: '+60 12-176 4532',
-    position: 'Field Worker',
-    department: 'Plantation Operations',
-    status: 'Active',
-    availability: 'Available',
-    hoursWorked: 42,
-    tasksCompleted: 15,
-    currentTasks: 2,
-    skills: ['Pruning', 'Harvesting', 'Weeding'],
-    joinDate: '2023-01-15',
-    lastActive: '2 hours ago',
-    rating: 4.8,
-    location: 'Block A',
-  },
-  {
-    id: 'worker2',
-    name: 'Maria Garcia',
-    email: 'maria.garcia@farm.com',
-    phone: '+60 16-893 625',
-    position: 'Field Worker',
-    department: 'Plantation Operation',
-    status: 'Active',
-    availability: 'Busy',
-    hoursWorked: 38,
-    tasksCompleted: 12,
-    currentTasks: 3,
-    skills: ['Harvesting', 'Spraying'],
-    joinDate: '2023-03-20',
-    lastActive: '30 minutes ago',
-    rating: 4.9,
-    location: 'Block B',
-  },
-  {
-    id: 'worker3',
-    name: 'Carlos Rodriguez',
-    email: 'carlos.rodriguez@farm.com',
-    phone: '+60 17-577 145',
-    position: 'Field Worker',
-    department: 'Plantation Operation',
-    status: 'Active',
-    availability: 'Available',
-    hoursWorked: 45,
-    tasksCompleted: 18,
-    currentTasks: 1,
-    skills: ['Pest & Disease', 'Manuring'],
-    joinDate: '2022-11-10',
-    lastActive: '1 hour ago',
-    rating: 4.7,
-    location: 'Block A',
-  },
-  {
-    id: 'worker4',
-    name: 'Ana Martinez',
-    email: 'ana.martinez@farm.com',
-    phone: '+60 16-761 718',
-    position: 'Field Worker',
-    department: 'Plantation Operation',
-    status: 'Active',
-    availability: 'Available',
-    hoursWorked: 40,
-    tasksCompleted: 14,
-    currentTasks: 2,
-    skills: ['Weeding', 'Harvesting', 'Pruning'],
-    joinDate: '2023-05-08',
-    lastActive: '15 minutes ago',
-    rating: 4.6,
-    location: 'Block C',
-  },
-  {
-    id: 'worker5',
-    name: 'David Wilson',
-    email: 'david.wilson@farm.com',
-    phone: '+60 15-142 345',
-    position: 'Field Worker',
-    department: 'Plantation Operation',
-    status: 'On Leave',
-    availability: 'Unavailable',
-    hoursWorked: 0,
-    tasksCompleted: 8,
-    currentTasks: 0,
-    skills: ['Mechanisation Fleet', 'Weeding'],
-    joinDate: '2023-07-12',
-    lastActive: '3 days ago',
-    rating: 4.5,
-    location: 'Block D',
-  },
+// Skill options
+const SKILL_OPTIONS = [
+  'Pruning',
+  'Harvesting',
+  'Weeding',
+  'Spraying',
+  'Pest & Disease',
+  'Manuring',
+  'Mechanisation Fleet',
+  'Equipment Maintenance',
+  'General Work',
 ];
+
+// Position options
+const POSITION_OPTIONS = [
+  'Field Worker',
+  'Technician',
+  'Supervisor',
+  'Driver',
+  'Security',
+  'Gardener',
+];
+
+// Location options
+const LOCATION_OPTIONS = ['Block A', 'Block B', 'Block C', 'Block D', 'Main Office'];
 
 export default function WorkersScreen() {
   const router = useRouter();
-  const [workers, setWorkers] = useState(mockWorkers);
+  
+  // Data states
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // UI states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+
+  // Form states
+  const [formName, setFormName] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formPosition, setFormPosition] = useState('Field Worker');
+  const [formSkills, setFormSkills] = useState<string[]>([]);
+  const [formLocation, setFormLocation] = useState('Block A');
+  const [formRemarks, setFormRemarks] = useState('');
 
   const filters = ['All', 'Available', 'Busy', 'Unavailable'];
 
+  // Load workers from API
+  const loadWorkers = useCallback(async () => {
+    try {
+      const response = await fetchWorkers();
+      if (response.success && response.data) {
+        setWorkers(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading workers:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadWorkers();
+  }, [loadWorkers]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadWorkers();
+  }, [loadWorkers]);
+
   const filteredWorkers = workers.filter(worker => {
-    const matchesSearch = worker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         worker.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         worker.department.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = 
+      worker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      worker.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      worker.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'All' || worker.availability === selectedFilter;
     return matchesSearch && matchesFilter;
   });
@@ -154,115 +142,464 @@ export default function WorkersScreen() {
     Linking.openURL(`mailto:${email}`);
   };
 
-  const handleWorkerPress = (worker: any) => {
-    Alert.alert(
-      worker.name,
-      `Position: ${worker.position}\nDepartment: ${worker.department}\nStatus: ${worker.status}\nLocation: ${worker.location}\n\nHours this week: ${worker.hoursWorked}\nTasks completed: ${worker.tasksCompleted}\nCurrent tasks: ${worker.currentTasks}\nRating: ${worker.rating}/5.0`,
-      [
-        { text: 'Call', onPress: () => handleCallWorker(worker.phone) },
-        { text: 'Email', onPress: () => handleEmailWorker(worker.email) },
-        { text: 'Close', style: 'cancel' }
-      ]
+  // Reset form
+  const resetForm = () => {
+    setFormName('');
+    setFormEmail('');
+    setFormPhone('');
+    setFormPosition('Field Worker');
+    setFormSkills([]);
+    setFormLocation('Block A');
+    setFormRemarks('');
+    setEditingWorker(null);
+  };
+
+  // Open create modal
+  const handleOpenCreateModal = () => {
+    resetForm();
+    setShowCreateModal(true);
+  };
+
+  // Open edit modal
+  const handleOpenEditModal = (worker: Worker) => {
+    setEditingWorker(worker);
+    setFormName(worker.name);
+    setFormEmail(worker.email);
+    setFormPhone(worker.phone);
+    setFormPosition(worker.position);
+    setFormSkills(worker.skills || []);
+    setFormLocation(worker.location);
+    setFormRemarks(worker.remarks || '');
+    setShowEditModal(true);
+  };
+
+  // Toggle skill selection
+  const toggleSkill = (skill: string) => {
+    setFormSkills(prev => 
+      prev.includes(skill) 
+        ? prev.filter(s => s !== skill)
+        : [...prev, skill]
     );
   };
 
-  const handleAddWorker = () => {
-    router.push('/create-form?type=worker');
+  // Create worker
+  const handleCreateWorker = async () => {
+    if (!formName.trim()) {
+      showAlert('Error', 'Worker name is required');
+      return;
+    }
+    if (!formEmail.trim()) {
+      showAlert('Error', 'Email is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: CreateWorkerPayload = {
+        name: formName.trim(),
+        email: formEmail.trim(),
+        phone: formPhone.trim(),
+        position: formPosition,
+        skills: formSkills.join(', '),
+        location: formLocation,
+        remarks: formRemarks.trim(),
+      };
+
+      const response = await createWorker(payload);
+      if (response.success && response.data) {
+        setWorkers(prev => [...prev, response.data!]);
+        setShowCreateModal(false);
+        resetForm();
+        showAlert('Success', 'Worker added successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to create worker');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to create worker. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const renderWorkerCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.workerCard} 
-      onPress={() => handleWorkerPress(item)}
-      activeOpacity={0.8}
+  // Update worker
+  const handleUpdateWorker = async () => {
+    if (!editingWorker) return;
+    
+    if (!formName.trim()) {
+      showAlert('Error', 'Worker name is required');
+      return;
+    }
+    if (!formEmail.trim()) {
+      showAlert('Error', 'Email is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: formName.trim(),
+        email: formEmail.trim(),
+        phone: formPhone.trim(),
+        position: formPosition,
+        skills: formSkills,
+        location: formLocation,
+        remarks: formRemarks.trim(),
+      };
+
+      const response = await updateWorker(editingWorker.id, payload);
+      if (response.success && response.data) {
+        setWorkers(prev => prev.map(w => w.id === editingWorker.id ? response.data! : w));
+        setShowEditModal(false);
+        resetForm();
+        showAlert('Success', 'Worker updated successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to update worker');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to update worker. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete worker
+  const handleDeleteWorker = async (worker: Worker) => {
+    const confirmDelete = async () => {
+      if (Platform.OS === 'web') {
+        return window.confirm(`Are you sure you want to delete "${worker.name}"?`);
+      }
+      return new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Delete Worker',
+          `Are you sure you want to delete "${worker.name}"?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+          ]
+        );
+      });
+    };
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+      const response = await deleteWorker(worker.id);
+      if (response.success) {
+        setWorkers(prev => prev.filter(w => w.id !== worker.id));
+        showAlert('Success', 'Worker deleted successfully!');
+      } else {
+        showAlert('Error', response.error || 'Failed to delete worker');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to delete worker. Please try again.');
+    }
+  };
+
+  // Show alert (cross-platform)
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  // Render worker form modal
+  const renderWorkerFormModal = (isEdit: boolean) => (
+    <Modal 
+      visible={isEdit ? showEditModal : showCreateModal} 
+      animationType="slide"
     >
-      <View style={styles.workerHeader}>
-        <View style={styles.workerAvatar}>
-          <IconSymbol name="person.fill" size={32} color="#2E7D32" />
-        </View>
-        <View style={styles.workerInfo}>
-          <View style={styles.workerNameRow}>
-            <Text style={styles.workerName}>{item.name}</Text>
-            <View style={[styles.availabilityDot, { backgroundColor: getAvailabilityColor(item.availability) }]} />
+      <SafeAreaView style={styles.modalContainer}>
+        <ScrollView 
+          contentContainerStyle={styles.modalContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => {
+                isEdit ? setShowEditModal(false) : setShowCreateModal(false);
+                resetForm();
+              }}
+            >
+              <IconSymbol name="chevron.left" size={24} color="#666" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {isEdit ? 'Edit Worker' : 'Add New Worker'}
+            </Text>
+            <View style={{ width: 40 }} />
           </View>
-          <Text style={styles.workerPosition}>{item.position}</Text>
-          <Text style={styles.workerDepartment}>{item.department}</Text>
-        </View>
-        <View style={styles.workerActions}>
+
+          {/* Name */}
+          <Text style={styles.label}>Worker Name *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formName}
+            onChangeText={setFormName}
+            placeholder="Enter worker name"
+            placeholderTextColor="#999"
+          />
+
+          {/* Email */}
+          <Text style={styles.label}>Email *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formEmail}
+            onChangeText={setFormEmail}
+            placeholder="Enter email address"
+            placeholderTextColor="#999"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          {/* Phone */}
+          <Text style={styles.label}>Phone Number</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formPhone}
+            onChangeText={setFormPhone}
+            placeholder="Enter phone number"
+            placeholderTextColor="#999"
+            keyboardType="phone-pad"
+          />
+
+          {/* Position */}
+          <Text style={styles.label}>Position</Text>
+          <View style={styles.optionsContainer}>
+            {POSITION_OPTIONS.map(pos => (
+              <TouchableOpacity
+                key={pos}
+                style={[
+                  styles.optionButton,
+                  formPosition === pos && styles.optionButtonActive
+                ]}
+                onPress={() => setFormPosition(pos)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  formPosition === pos && styles.optionTextActive
+                ]}>
+                  {pos}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Skills */}
+          <Text style={styles.label}>Skills</Text>
+          <View style={styles.optionsContainer}>
+            {SKILL_OPTIONS.map(skill => (
+              <TouchableOpacity
+                key={skill}
+                style={[
+                  styles.skillButton,
+                  formSkills.includes(skill) && styles.skillButtonActive
+                ]}
+                onPress={() => toggleSkill(skill)}
+              >
+                <Text style={[
+                  styles.skillButtonText,
+                  formSkills.includes(skill) && styles.skillButtonTextActive
+                ]}>
+                  {skill}
+                </Text>
+                {formSkills.includes(skill) && (
+                  <IconSymbol name="checkmark" size={14} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Location */}
+          <Text style={styles.label}>Location</Text>
+          <View style={styles.optionsContainer}>
+            {LOCATION_OPTIONS.map(loc => (
+              <TouchableOpacity
+                key={loc}
+                style={[
+                  styles.optionButton,
+                  formLocation === loc && styles.optionButtonActive
+                ]}
+                onPress={() => setFormLocation(loc)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  formLocation === loc && styles.optionTextActive
+                ]}>
+                  {loc}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Remarks */}
+          <Text style={styles.label}>Remarks</Text>
+          <TextInput
+            style={[styles.textInput, styles.textArea]}
+            value={formRemarks}
+            onChangeText={setFormRemarks}
+            placeholder="Additional notes about the worker"
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={3}
+          />
+
+          {/* Submit Button */}
           <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => handleCallWorker(item.phone)}
-            activeOpacity={0.7}
+            style={[styles.submitButton, submitting && styles.buttonDisabled]} 
+            onPress={isEdit ? handleUpdateWorker : handleCreateWorker}
+            disabled={submitting}
           >
-            <IconSymbol name="house.fill" size={20} color="#2E7D32" />
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <IconSymbol 
+                  name={isEdit ? "checkmark.circle.fill" : "person.badge.plus"} 
+                  size={20} 
+                  color="#FFFFFF" 
+                />
+                <Text style={styles.submitButtonText}>
+                  {isEdit ? 'Update Worker' : 'Add Worker'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => handleEmailWorker(item.email)}
-            activeOpacity={0.7}
+
+          {/* Cancel Button */}
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => {
+              isEdit ? setShowEditModal(false) : setShowCreateModal(false);
+              resetForm();
+            }}
           >
-            <IconSymbol name="envelope.fill" size={20} color="#2E7D32" />
+            <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-        </View>
-      </View>
 
-      <View style={styles.workerStats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.hoursWorked}h</Text>
-          <Text style={styles.statLabel}>This Week</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.tasksCompleted}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.currentTasks}</Text>
-          <Text style={styles.statLabel}>Active</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.rating}</Text>
-          <Text style={styles.statLabel}>Rating</Text>
-        </View>
-      </View>
-
-      <View style={styles.workerDetails}>
-        <View style={styles.detailRow}>
-          <IconSymbol name="house.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>{item.location}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <IconSymbol name="house.fill" size={14} color="#666666" />
-          <Text style={styles.detailText}>Last active: {item.lastActive}</Text>
-        </View>
-      </View>
-
-      <View style={styles.skillsContainer}>
-        <Text style={styles.skillsLabel}>Skills:</Text>
-        <View style={styles.skillsList}>
-          {item.skills.slice(0, 3).map((skill: string, index: number) => (
-            <View key={index} style={styles.skillBadge}>
-              <Text style={styles.skillText}>{skill}</Text>
-            </View>
-          ))}
-          {item.skills.length > 3 && (
-            <View style={styles.skillBadge}>
-              <Text style={styles.skillText}>+{item.skills.length - 3}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.workerFooter}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-        <Text style={styles.joinDate}>Joined {item.joinDate}</Text>
-      </View>
-    </TouchableOpacity>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
+
+  const renderWorkerCard = ({ item }: { item: Worker }) => (
+    <View style={styles.workerCard}>
+      <TouchableOpacity 
+        style={styles.workerCardContent}
+        onPress={() => handleOpenEditModal(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.workerHeader}>
+          <View style={styles.workerAvatar}>
+            <IconSymbol name="person.fill" size={32} color="#2E7D32" />
+          </View>
+          <View style={styles.workerInfo}>
+            <View style={styles.workerNameRow}>
+              <Text style={styles.workerName}>{item.name}</Text>
+              <View style={[styles.availabilityDot, { backgroundColor: getAvailabilityColor(item.availability) }]} />
+            </View>
+            <Text style={styles.workerPosition}>{item.position}</Text>
+            <Text style={styles.workerEmail}>{item.email}</Text>
+          </View>
+          <View style={styles.workerActions}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => handleCallWorker(item.phone)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="phone.fill" size={20} color="#2E7D32" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => handleEmailWorker(item.email)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="envelope.fill" size={20} color="#2E7D32" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.workerStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.hoursWorked}h</Text>
+            <Text style={styles.statLabel}>This Week</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.tasksCompleted}</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.currentTasks}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.rating || '-'}</Text>
+            <Text style={styles.statLabel}>Rating</Text>
+          </View>
+        </View>
+
+        <View style={styles.workerDetails}>
+          <View style={styles.detailRow}>
+            <IconSymbol name="location.fill" size={14} color="#666666" />
+            <Text style={styles.detailText}>{item.location}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <IconSymbol name="phone.fill" size={14} color="#666666" />
+            <Text style={styles.detailText}>{item.phone || 'No phone'}</Text>
+          </View>
+        </View>
+
+        {item.skills && item.skills.length > 0 && (
+          <View style={styles.skillsContainer}>
+            <Text style={styles.skillsLabel}>Skills:</Text>
+            <View style={styles.skillsList}>
+              {item.skills.slice(0, 3).map((skill: string, index: number) => (
+                <View key={index} style={styles.skillBadge}>
+                  <Text style={styles.skillText}>{skill}</Text>
+                </View>
+              ))}
+              {item.skills.length > 3 && (
+                <View style={styles.skillBadge}>
+                  <Text style={styles.skillText}>+{item.skills.length - 3}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.workerFooter}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+            <Text style={styles.statusText}>{item.status}</Text>
+          </View>
+          <Text style={styles.joinDate}>Joined {item.joinDate}</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Delete Button */}
+      <TouchableOpacity 
+        style={styles.deleteButton}
+        onPress={() => handleDeleteWorker(item)}
+      >
+        <IconSymbol name="trash.fill" size={18} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Loading workers...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -275,7 +612,7 @@ export default function WorkersScreen() {
           <View style={styles.headerActions}>
             <TouchableOpacity 
               style={styles.addButton}
-              onPress={handleAddWorker}
+              onPress={handleOpenCreateModal}
               activeOpacity={0.8}
             >
               <IconSymbol name="plus" size={24} color="#FFFFFF" />
@@ -285,9 +622,7 @@ export default function WorkersScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <IconSymbol name="house.fill" 
-          size={20} 
-          color="#666666" />
+          <IconSymbol name="magnifyingglass" size={20} color="#666666" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search workers"
@@ -328,9 +663,17 @@ export default function WorkersScreen() {
       <FlatList
         data={filteredWorkers}
         renderItem={renderWorkerCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2E7D32']}
+            tintColor="#2E7D32"
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <IconSymbol name="person.fill" size={64} color="#CCCCCC" />
@@ -338,9 +681,22 @@ export default function WorkersScreen() {
             <Text style={styles.emptySubtitle}>
               {searchQuery ? 'Try adjusting your search' : 'Add workers to start managing your team'}
             </Text>
+            <TouchableOpacity 
+              style={styles.emptyAddButton}
+              onPress={handleOpenCreateModal}
+            >
+              <IconSymbol name="plus" size={20} color="#FFFFFF" />
+              <Text style={styles.emptyAddButtonText}>Add First Worker</Text>
+            </TouchableOpacity>
           </View>
         }
       />
+
+      {/* Create Modal */}
+      {renderWorkerFormModal(false)}
+
+      {/* Edit Modal */}
+      {renderWorkerFormModal(true)}
     </SafeAreaView>
   );
 }
@@ -349,6 +705,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFE',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFE',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     backgroundColor: '#FFFFFF',
@@ -425,17 +792,29 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 24,
+    paddingBottom: 100,
   },
   workerCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  workerCardContent: {
+    flex: 1,
+    padding: 20,
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   workerHeader: {
     flexDirection: 'row',
@@ -476,7 +855,7 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     marginBottom: 2,
   },
-  workerDepartment: {
+  workerEmail: {
     fontSize: 12,
     color: '#666666',
   },
@@ -594,5 +973,149 @@ const styles = StyleSheet.create({
     color: '#999999',
     textAlign: 'center',
     paddingHorizontal: 40,
+    marginBottom: 24,
+  },
+  emptyAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+  },
+  emptyAddButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFE',
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#333',
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  optionButtonActive: {
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  optionTextActive: {
+    color: '#FFFFFF',
+  },
+  skillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    gap: 6,
+  },
+  skillButtonActive: {
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
+  },
+  skillButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#333',
+  },
+  skillButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  submitButton: {
+    backgroundColor: '#2E7D32',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F5',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  cancelButtonText: {
+    color: '#666666',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

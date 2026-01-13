@@ -8,10 +8,17 @@ const USER_DATA_KEY = 'user_data';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export interface UserData {
-  id: string;
-  name: string;
+  id: number;
+  name?: string;
+  fullName?: string;
   email: string;
-  supervisorId: string;
+  username?: string;
+  supervisorId?: string;
+  status?: string;
+  profileImage?: string;
+  phone?: string;
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 // Helper to check if SecureStore is available (not on web)

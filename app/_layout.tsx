@@ -27,7 +27,11 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         {/* GLOBAL SCREENS 
           Available regardless of authentication status 
         */}
@@ -44,7 +48,7 @@ function RootLayoutNav() {
           // Authenticated user screens
           <>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: false }} />
             <Stack.Screen 
               name="create-form" 
               options={{ 
@@ -76,6 +80,36 @@ function RootLayoutNav() {
             />
             <Stack.Screen 
               name="ai-chat" 
+              options={{ 
+                headerShown: false,
+                gestureEnabled: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="create-block" 
+              options={{ 
+                presentation: 'modal',
+                headerShown: false,
+                gestureEnabled: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="add-tree" 
+              options={{ 
+                presentation: 'modal',
+                headerShown: false,
+                gestureEnabled: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="blocks" 
+              options={{ 
+                headerShown: false,
+                gestureEnabled: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="trees" 
               options={{ 
                 headerShown: false,
                 gestureEnabled: true,
