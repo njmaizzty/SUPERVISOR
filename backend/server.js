@@ -16,6 +16,7 @@ const authRoutes = require('./routes/auth');
 const workersRoutes = require('./routes/workers');
 const assetsRoutes = require('./routes/assets');
 const areasRoutes = require('./routes/areas');
+const aiChatRoutes = require('./routes/ai-chat');
 
 // Use routes
 app.use('/api/dashboard', dashboardRoutes);
@@ -24,6 +25,7 @@ app.use('/api/supervisor', authRoutes);
 app.use('/api/workers', workersRoutes);
 app.use('/api/assets', assetsRoutes);
 app.use('/api/areas', areasRoutes);
+app.use('/api/ai-chat', aiChatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -39,5 +41,6 @@ app.listen(PORT, () => {
   console.log(`👷 Workers API: http://localhost:${PORT}/api/workers`);
   console.log(`🔧 Assets API: http://localhost:${PORT}/api/assets`);
   console.log(`🗺️ Areas API: http://localhost:${PORT}/api/areas`);
+  console.log(`🤖 AI Chat API: http://localhost:${PORT}/api/ai-chat`);
 });
 

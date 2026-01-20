@@ -205,35 +205,44 @@ export default function TasksScreen() {
     setRecommendedWorkers([]);
   };
 
+  // Helper for cross-platform alerts
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   // Handle task creation
   const handleCreateTask = async () => {
     // Validation
     if (!taskType) {
-      Alert.alert('Missing Info', 'Please select a task type.');
+      showAlert('Missing Info', 'Please select a task type.');
       return;
     }
     if (!taskSubType) {
-      Alert.alert('Missing Info', 'Please select a task detail.');
+      showAlert('Missing Info', 'Please select a task detail.');
       return;
     }
     if (!selectedWorker) {
-      Alert.alert('Missing Info', 'Please select a worker.');
+      showAlert('Missing Info', 'Please select a worker.');
       return;
     }
     if (!startDate) {
-      Alert.alert('Missing Info', 'Please select a start date.');
+      showAlert('Missing Info', 'Please select a start date.');
       return;
     }
     if (!endDate) {
-      Alert.alert('Missing Info', 'Please select an end date.');
+      showAlert('Missing Info', 'Please select an end date.');
       return;
     }
     if (!selectedArea) {
-      Alert.alert('Missing Info', 'Please select an area/block.');
+      showAlert('Missing Info', 'Please select an area/block.');
       return;
     }
     if (!selectedAsset) {
-      Alert.alert('Missing Info', 'Please select an asset/equipment.');
+      showAlert('Missing Info', 'Please select an asset/equipment.');
       return;
     }
 
@@ -262,12 +271,13 @@ export default function TasksScreen() {
         setTasks(prev => [response.data!, ...prev]);
         resetForm();
         setShowCreateModal(false);
-        Alert.alert('Success', `Task assigned to ${selectedWorker.name}!`);
+        showAlert('Success', `Task assigned to ${selectedWorker.name}!`);
       } else {
-        Alert.alert('Error', response.error || 'Failed to create task');
+        showAlert('Error', response.error || 'Failed to create task');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to create task. Please try again.');
+      console.error('Task creation error:', error);
+      showAlert('Error', 'Failed to create task. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -544,7 +554,7 @@ export default function TasksScreen() {
                       </View>
                       <View style={styles.scoreContainer}>
                         <Text style={styles.scoreLabel}>Match</Text>
-                        <Text style={styles.scoreValue}>{worker.suitability_score}%</Text>
+                        <Text style={styles.scoreValue}>{worker.suitability_score ?? 0}%</Text>
                       </View>
                     </View>
                     <View style={styles.workerMetrics}>
@@ -554,12 +564,12 @@ export default function TasksScreen() {
                           styles.metricValue,
                           { color: worker.availability === 'Available' ? '#4CAF50' : '#FF9800' }
                         ]}>
-                          {worker.availability}
+                          {worker.availability || 'Unknown'}
                         </Text>
                       </View>
                       <View style={styles.metricItem}>
                         <Text style={styles.metricLabel}>Experience</Text>
-                        <Text style={styles.metricValue}>{worker.experience} years</Text>
+                        <Text style={styles.metricValue}>{worker.experience ?? 0} years</Text>
                       </View>
                     </View>
                     {worker.current_tasks && worker.current_tasks.length > 0 && (

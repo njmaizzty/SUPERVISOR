@@ -32,18 +32,6 @@ function RootLayoutNav() {
           headerShown: false,
         }}
       >
-        {/* GLOBAL SCREENS 
-          Available regardless of authentication status 
-        */}
-        <Stack.Screen 
-          name="support" 
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-            presentation: 'card' 
-          }} 
-        />
-
         {isAuthenticated ? (
           // Authenticated user screens
           <>

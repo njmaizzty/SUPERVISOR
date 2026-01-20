@@ -1,4 +1,5 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { sendAIMessage } from '@/services/aiChatService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
@@ -23,6 +24,11 @@ interface ChatMessage {
   typing?: boolean;
 }
 
+interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function AIChatScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -36,27 +42,16 @@ export default function AIChatScreen() {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
 
   const quickQuestions = [
     "Who should I assign for harvesting?",
     "What are today's priorities?",
-    "Show equipment maintenance",
-    "What's the weather forecast?",
-    "Help me create a task",
-    "Show performance report",
+    "How to maintain farm equipment?",
+    "Tips for improving crop yield",
+    "Help me manage my workers",
+    "What should I do if I find diseased trees?",
   ];
-
-  const aiResponses: Record<string, string> = {
-    "worker": "Based on performance data, **Ahmad** has the highest efficiency for harvesting tasks (92% match score). He's currently available with 5 years of experience. For pruning, I recommend **Maya** with an 88% match score.",
-    "maintenance": "🔧 **Maintenance Summary:**\n\n• John Deere Tractor - Due in 3 days\n• Fertilizer Spreader - Overdue by 2 days (⚠️ Urgent)\n• Irrigation Controller - Next service in 2 weeks\n\nI recommend scheduling the spreader service immediately to prevent crop delays.",
-    "irrigation": "💧 **Irrigation Optimization:**\n\nWeather forecast shows 40% rain chance next week. I suggest:\n\n1. Reduce Block B irrigation by 15%\n2. Adjust schedule to 5-7 AM for optimal absorption\n3. Monitor soil moisture sensors in Block A\n\nEstimated water savings: 2,500 gallons/week",
-    "priorities": "📋 **Today's Priorities:**\n\n1. 🔴 Complete pest inspection in Block A (high risk)\n2. 🟠 Assign Ahmad to harvesting - Block C\n3. 🟡 Schedule tractor maintenance\n4. 🟢 Review worker schedules for next week\n\nWould you like me to create tasks for any of these?",
-    "task": "I can help you create and assign tasks! Based on current workload:\n\n• **Harvesting**: Ahmad & Faiz are available\n• **Pruning**: Maya is recommended (88% match)\n• **Spraying**: Siti is experienced but currently busy\n\nWhat type of task would you like to create?",
-    "weather": "🌤️ **Weather Forecast (Next 7 Days):**\n\n• Today: Sunny, 28°C\n• Tomorrow: Partly cloudy, 27°C\n• Wed-Thu: 40% chance of rain\n• Fri-Sun: Clear skies, 29-31°C\n\nRecommendation: Plan outdoor tasks for Friday onwards.",
-    "performance": "📊 **Farm Performance Summary:**\n\n• Task completion rate: 87% (+5% from last month)\n• Worker productivity: 92% average\n• Equipment uptime: 94%\n• Pending tasks: 12\n\nTop performer this week: Ahmad (15 tasks completed)",
-    "help": "I can help you with:\n\n🧑‍🌾 **Workers** - Find best matches, check availability\n📋 **Tasks** - Create, assign, and track tasks\n🚜 **Equipment** - Maintenance schedules, status\n🌱 **Areas** - Block management, crop status\n📊 **Reports** - Performance analytics\n🌤️ **Weather** - Forecasts and recommendations\n\nJust ask me anything!",
-    "default": "I'm your AI Farm Assistant! I can help with:\n\n• Worker assignments & recommendations\n• Task creation & scheduling\n• Equipment maintenance alerts\n• Weather-based planning\n• Performance insights\n\nTry asking: \"Who should I assign for harvesting?\" or \"What are today's priorities?\""
-  };
 
   useEffect(() => {
     scrollToBottom();
@@ -66,30 +61,6 @@ export default function AIChatScreen() {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
-  };
-
-  const getAIResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
-    
-    if (message.includes('worker') || message.includes('assign') || message.includes('who') || message.includes('best')) {
-      return aiResponses.worker;
-    } else if (message.includes('maintenance') || message.includes('service') || message.includes('repair') || message.includes('equipment')) {
-      return aiResponses.maintenance;
-    } else if (message.includes('irrigation') || message.includes('water') || message.includes('optimize')) {
-      return aiResponses.irrigation;
-    } else if (message.includes('priority') || message.includes('today') || message.includes('urgent') || message.includes('important')) {
-      return aiResponses.priorities;
-    } else if (message.includes('task') || message.includes('create') || message.includes('schedule')) {
-      return aiResponses.task;
-    } else if (message.includes('weather') || message.includes('rain') || message.includes('forecast')) {
-      return aiResponses.weather;
-    } else if (message.includes('performance') || message.includes('report') || message.includes('analytics') || message.includes('stats')) {
-      return aiResponses.performance;
-    } else if (message.includes('help') || message.includes('what can you') || message.includes('how')) {
-      return aiResponses.help;
-    } else {
-      return aiResponses.default;
-    }
   };
 
   const sendMessage = async (text: string) => {
@@ -106,18 +77,44 @@ export default function AIChatScreen() {
     setInputText('');
     setIsTyping(true);
 
-    // Simulate AI thinking time
-    setTimeout(() => {
+    // Add user message to conversation history
+    const newHistory: ConversationMessage[] = [
+      ...conversationHistory,
+      { role: 'user', content: text.trim() }
+    ];
+
+    try {
+      // Call OpenAI via backend
+      const response = await sendAIMessage(text.trim(), conversationHistory);
+      
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: getAIResponse(text),
+        text: response.response,
         isUser: false,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, aiResponse]);
+      
+      // Update conversation history with AI response
+      setConversationHistory([
+        ...newHistory,
+        { role: 'assistant', content: response.response }
+      ]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      
+      const errorResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm having trouble connecting right now. Please try again in a moment.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, errorResponse]);
+    } finally {
       setIsTyping(false);
-    }, 1500 + Math.random() * 1000); // Random delay between 1.5-2.5 seconds
+    }
   };
 
   const handleQuickQuestion = (question: string) => {
