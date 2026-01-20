@@ -16,7 +16,7 @@ const getBaseUrl = () => {
   // For mobile devices/Android emulator, use 10.0.2.2 (Android emulator localhost)
   // Or use your machine's actual IP address for physical devices
   // 10.0.2.2 is the special alias to the host machine from Android emulator
-  return 'http://10.0.2.2:3001/api';
+  return 'http://192.168.0.16:3001/api';
 };
 
 export const API_BASE_URL = getBaseUrl();
