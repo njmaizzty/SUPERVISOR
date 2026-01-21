@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  SafeAreaView,
-  TextInput,
-  Modal,
-  ActivityIndicator,
-  Image,
-  Platform,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { updateProfile, changePassword } from '@/services/profileService';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { changePassword, updateProfile } from '@/services/profileService';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function ProfileScreen() {
   const { user, logout, updateUser, getToken, isLoading: authLoading } = useAuth();
@@ -29,6 +29,15 @@ export default function ProfileScreen() {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
+
+  // Help, Terms, Privacy
+  const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
+  const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
+  const [isPrivacyModalVisible, setIsPrivacyModalVisible] = useState(false);
   
   // Form states
   const [editForm, setEditForm] = useState({
@@ -137,6 +146,246 @@ export default function ProfileScreen() {
       );
     }
   };
+
+  //Notifications Part
+  useEffect(() => {
+  // Example: Fetch notifications from API
+  const fetchNotifications = async () => {
+    // Mock data
+    const data = [
+      { id: 1, message: 'Task A is due today', date: '2026-01-21' },
+      { id: 2, message: 'New worker assigned to Area 5', date: '2026-01-20' },
+    ];
+    setNotifications(data);
+  };
+
+  fetchNotifications();
+}, []);
+
+//Notification Modal
+const renderNotificationModal = () => (
+  <Modal
+    visible={isNotificationModalVisible}
+    animationType="slide"
+    presentationStyle="pageSheet"
+    onRequestClose={() => setIsNotificationModalVisible(false)}
+  >
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFE' }}>
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+      }}>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A237E' }}>Notifications</Text>
+        <TouchableOpacity onPress={() => setIsNotificationModalVisible(false)}>
+          <Text style={{ fontSize: 16, color: '#666' }}>Close</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        {notifications.length === 0 ? (
+          <Text style={{ textAlign: 'center', color: '#999', marginTop: 20 }}>
+            No notifications
+          </Text>
+        ) : (
+          notifications.map((notif) => (
+            <View key={notif.id} style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 12,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 2,
+            }}>
+              <Text style={{ fontSize: 14, color: '#333', marginBottom: 4 }}>
+                {notif.message}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#999' }}>
+                {notif.date}
+              </Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>
+);
+
+//Help Modal
+const renderHelpModal = () => (
+  <Modal
+    visible={isHelpModalVisible}
+    animationType="slide"
+    presentationStyle="pageSheet"
+    onRequestClose={() => setIsHelpModalVisible(false)}
+  >
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFE' }}>
+      <View style={styles.modalHeader}>
+        <Text style={styles.modalTitle}>Help & Support</Text>
+        <TouchableOpacity onPress={() => setIsHelpModalVisible(false)}>
+          <Text style={{ fontSize: 16, color: '#666' }}>Close</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          Welcome to the app! Here’s how to use it:
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          1. View tasks by clicking the "Tasks" section in the bottom navigation.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          2. Manage workers and areas from your dashboard.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          3. Update your profile by clicking "Edit Profile" under Account Settings.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          4. Change your password for security in "Change Password".
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          5. Check notifications regularly to stay updated with tasks and assignments.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginTop: 12 }}>
+          If you encounter any issues, contact support at support@example.com.
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>
+);
+
+//Terms Modal
+const renderTermsModal = () => (
+  <Modal
+    visible={isTermsModalVisible}
+    animationType="slide"
+    presentationStyle="pageSheet"
+    onRequestClose={() => setIsTermsModalVisible(false)}
+  >
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFE' }}>
+      <View style={styles.modalHeader}>
+        <Text style={styles.modalTitle}>Terms of Service</Text>
+        <TouchableOpacity onPress={() => setIsTermsModalVisible(false)}>
+          <Text style={{ fontSize: 16, color: '#666' }}>Close</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          By using this app, you agree to the following terms:
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          1. You will use the app only for its intended purpose and not misuse it.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          2. Your account is personal and you must keep your login credentials confidential.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          3. Supervisors are responsible for updating task status and worker assignments accurately.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+          4. We reserve the right to suspend accounts for violating the terms.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#333', marginTop: 12 }}>
+          For more information, contact support@example.com.
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>
+);
+
+//Privacy Modal
+const renderPrivacyModal = () => (
+  <Modal
+    visible={isPrivacyModalVisible}
+    animationType="slide"
+    presentationStyle="pageSheet"
+    onRequestClose={() => setIsPrivacyModalVisible(false)}
+  >
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFE' }}>
+      <View style={styles.modalHeader}>
+        <Text style={styles.modalTitle}>Privacy Policy</Text>
+        <TouchableOpacity onPress={() => setIsPrivacyModalVisible(false)}>
+          <Text style={{ fontSize: 16, color: '#666' }}>Close</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        
+        {/* Introduction */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Introduction</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data when you use our app.
+        </Text>
+
+        {/* Information Collected */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Information Collected</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          We collect personal information such as your name, email, phone number, and address to provide a personalized experience. We also gather non-personal information including device type, browser type, IP address, and usage data to improve app performance. Additionally, cookies and other tracking technologies may be used to enhance your experience and understand usage patterns.
+        </Text>
+
+        {/* How Information is Used */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>How Information is Used</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          Your information helps us provide and improve our services. We may use your data to communicate important updates, respond to support requests, or send notifications. In some cases, information may also be used for marketing or analytics purposes. We also use data as necessary to comply with legal obligations.
+        </Text>
+
+        {/* How Information is Shared */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>How Information is Shared</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          We do not sell your personal information. However, we may share data with trusted third-party service providers such as payment processors or analytics platforms to help operate the app. Your information may also be disclosed when required by law or in connection with business transfers like mergers or acquisitions.
+        </Text>
+
+        {/* Data Security */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Data Security</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          We implement appropriate technical and organizational measures to protect your information, including encryption and secure servers. While we strive to protect your data, no system is completely secure, and we cannot guarantee absolute security.
+        </Text>
+
+        {/* User Rights */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>User Rights</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          You have the right to access, correct, or request deletion of your personal information. You can also opt out of marketing communications. Additionally, you may exercise rights provided under applicable data protection laws such as GDPR or PDPA.
+        </Text>
+
+        {/* Retention Period */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Data Retention</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          We retain your personal data only for as long as necessary to fulfill the purposes outlined in this Privacy Policy. Outdated or unnecessary data is securely deleted or anonymized.
+        </Text>
+
+        {/* Cookies / Tracking */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Cookies & Tracking</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          Cookies and similar technologies are used to improve your experience and understand app usage. You can choose to disable cookies in your browser or device settings, though some features may not function properly without them.
+        </Text>
+
+        {/* Children’s Privacy */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Children’s Privacy</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          Our app is not intended for children under 13. We do not knowingly collect personal information from minors. If we learn that we have collected data from a child without consent, we will delete it promptly.
+        </Text>
+
+        {/* Changes to Policy */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Changes to Privacy Policy</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          We may update this Privacy Policy from time to time. Users will be notified of any significant changes, and the effective date will be updated accordingly.
+        </Text>
+
+        {/* Contact Information */}
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 6 }}>Contact Us</Text>
+        <Text style={{ fontSize: 14, color: '#333', marginBottom: 12 }}>
+          If you have any questions or concerns about your privacy or this policy, please contact us at privacy@example.com.
+        </Text>
+
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>
+);
+
 
   // Initialize form with user data
   useEffect(() => {
@@ -534,7 +783,7 @@ export default function ProfileScreen() {
         {/* Header with Profile Card */}
         <View style={styles.header}>
           <View style={styles.headerBackground} />
-          
+
           <View style={styles.profileCard}>
             <TouchableOpacity 
               style={styles.avatarContainer}
@@ -553,24 +802,16 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.userName}>{user?.fullName || user?.name || 'Supervisor'}</Text>
-            <Text style={styles.userRole}>Farm Supervisor</Text>
+              <View style={styles.profileTextContainer}>
+  <Text style={styles.userName}>
+    {user?.fullName || user?.name || 'Supervisor'}
+  </Text>
 
-            {/* Supervisor ID Badge */}
-            <View style={styles.supervisorIdBadge}>
-              <IconSymbol name="number" size={14} color="#FFFFFF" />
-              <Text style={styles.supervisorIdText}>
-                ID: {user?.supervisorId || 'SUP-001'}
-              </Text>
-            </View>
+  <Text style={styles.supervisorIdTextClean}>
+    Supervisor ID: {user?.supervisorId || 'SUP-001'}
+  </Text>
+</View>
 
-            <TouchableOpacity 
-              style={styles.editProfileButton}
-              onPress={() => setIsEditModalVisible(true)}
-            >
-              <IconSymbol name="pencil" size={14} color="#FFFFFF" />
-              <Text style={styles.editProfileText}>Edit Profile</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -643,7 +884,7 @@ export default function ProfileScreen() {
             <ProfileItem
               icon="bell.fill"
               title="Notifications"
-              onPress={() => showAlert('Coming Soon', 'Notification settings will be available soon.')}
+              onPress={() => setIsNotificationModalVisible(true)} // open the modal
               showArrow
             />
           </View>
@@ -659,21 +900,21 @@ export default function ProfileScreen() {
               value="1.0.0"
             />
             <ProfileItem
-              icon="questionmark.circle.fill"
-              title="Help & Support"
-              onPress={() => showAlert('Coming Soon', 'Help & Support will be available soon.')}
-              showArrow
+            icon="questionmark.circle.fill"
+            title="Help & Support"
+            onPress={() => setIsHelpModalVisible(true)}
+            showArrow
             />
             <ProfileItem
               icon="doc.text.fill"
               title="Terms of Service"
-              onPress={() => showAlert('Coming Soon', 'Terms of Service will be available soon.')}
+              onPress={() => setIsTermsModalVisible(true)}
               showArrow
             />
             <ProfileItem
               icon="hand.raised.fill"
               title="Privacy Policy"
-              onPress={() => showAlert('Coming Soon', 'Privacy Policy will be available soon.')}
+              onPress={() => setIsPrivacyModalVisible(true)}
               showArrow
             />
           </View>
@@ -698,6 +939,10 @@ export default function ProfileScreen() {
       {/* Modals */}
       {renderEditModal()}
       {renderPasswordModal()}
+      {renderNotificationModal()}
+      {renderHelpModal()}
+      {renderTermsModal()}
+      {renderPrivacyModal()}
     </SafeAreaView>
   );
 }
@@ -772,13 +1017,11 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   userName: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+  fontSize: 26,
+  fontWeight: 'bold',
+  color: '#000000',   // black
+  marginBottom: 4,
+  textAlign: 'center' // center text
   },
   userRole: {
     fontSize: 16,
@@ -824,7 +1067,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     marginHorizontal: 24,
-    marginTop: 20,
+    marginTop: 8,
     borderRadius: 16,
     paddingVertical: 20,
     shadowColor: '#000',
@@ -1030,4 +1273,19 @@ const styles = StyleSheet.create({
     color: '#999999',
     marginTop: 4,
   },
+  profileTextContainer: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 38,
+},
+
+supervisorIdTextClean: {
+  fontSize: 14,
+  color: '#555555',
+  marginTop: 6,
+  textAlign: 'center',
+},
+profileImageContainer: {
+  marginBottom: 6, // was probably 8 or more
+},
 });

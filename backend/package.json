@@ -9,9 +9,11 @@
     "db:init": "node db/init.js"
   },
   "dependencies": {
+    "body-parser": "^2.2.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.6.1",
     "express": "^4.22.1",
+    "openai": "^6.16.0",
     "pg": "^8.11.3"
   },
   "devDependencies": {
