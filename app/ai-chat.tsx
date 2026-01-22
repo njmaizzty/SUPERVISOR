@@ -63,59 +63,58 @@ export default function AIChatScreen() {
     }, 100);
   };
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+const sendMessage = async (text: string) => {
+  if (!text.trim() || isTyping) return;
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: text.trim(),
-      isUser: true,
+  const userMessage: ChatMessage = {
+    id: Date.now().toString(),
+    text: text.trim(),
+    isUser: true,
+    timestamp: new Date(),
+  };
+
+  // Update UI immediately
+  setMessages(prev => [...prev, userMessage]);
+  setInputText('');
+  setIsTyping(true);
+
+  const updatedHistory: ConversationMessage[] = [
+    ...conversationHistory,
+    { role: 'user', content: text.trim() }
+  ];
+
+  try {
+    const response = await sendAIMessage(text.trim(), updatedHistory);
+
+    const aiMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      text: response.response,
+      isUser: false,
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsTyping(true);
+    setMessages(prev => [...prev, aiMessage]);
 
-    // Add user message to conversation history
-    const newHistory: ConversationMessage[] = [
-      ...conversationHistory,
-      { role: 'user', content: text.trim() }
-    ];
-
-    try {
-      // Call OpenAI via backend
-      const response = await sendAIMessage(text.trim(), conversationHistory);
-      
-      const aiResponse: ChatMessage = {
+    // Save full conversation
+    setConversationHistory([
+      ...updatedHistory,
+      { role: 'assistant', content: response.response }
+    ]);
+  } catch (error) {
+    setMessages(prev => [
+      ...prev,
+      {
         id: (Date.now() + 1).toString(),
-        text: response.response,
+        text: "⚠️ Sorry, I couldn’t respond right now. Please try again.",
         isUser: false,
         timestamp: new Date(),
-      };
+      }
+    ]);
+  } finally {
+    setIsTyping(false);
+  }
+};
 
-      setMessages(prev => [...prev, aiResponse]);
-      
-      // Update conversation history with AI response
-      setConversationHistory([
-        ...newHistory,
-        { role: 'assistant', content: response.response }
-      ]);
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      
-      const errorResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: "I'm having trouble connecting right now. Please try again in a moment.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, errorResponse]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
 
   const handleQuickQuestion = (question: string) => {
     sendMessage(question);
