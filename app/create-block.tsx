@@ -411,7 +411,8 @@ export default function CreateBlockScreen() {
               <Text style={styles.sectionTitle}>🌍 Soil & Terrain</Text>
             </View>
 
-            {false && (
+            {/* Soil Type (hidden) */}
+{false && (
   <View style={styles.inputGroup}>
     <Text style={styles.label}>Soil Type</Text>
     <View style={styles.optionList}>
@@ -431,6 +432,34 @@ export default function CreateBlockScreen() {
             ]}
           >
             {soil}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+)}
+
+{/* Slope (hidden) */}
+{false && (
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Slope</Text>
+    <View style={styles.optionList}>
+      {SLOPE_OPTIONS.map((slope) => (
+        <TouchableOpacity
+          key={slope}
+          style={[
+            styles.optionButton,
+            formData.slope === slope && styles.optionButtonActive,
+          ]}
+          onPress={() => handleInputChange('slope', slope)}
+        >
+          <Text
+            style={[
+              styles.optionText,
+              formData.slope === slope && styles.optionTextActive,
+            ]}
+          >
+            {slope}
           </Text>
         </TouchableOpacity>
       ))}
@@ -464,33 +493,33 @@ export default function CreateBlockScreen() {
               </View>
             </View>
 
-            {false && (
+            {/* Slope (hidden) */}
+{false && (
   <View style={styles.inputGroup}>
-    <Text style={styles.label}>Soil Type</Text>
+    <Text style={styles.label}>Slope</Text>
     <View style={styles.optionList}>
-      {SOIL_TYPES.map((soil) => (
+      {SLOPE_OPTIONS.map((slope) => (
         <TouchableOpacity
-          key={soil}
+          key={slope}
           style={[
             styles.optionButton,
-            formData.soilType === soil && styles.optionButtonActive,
+            formData.slope === slope && styles.optionButtonActive,
           ]}
-          onPress={() => handleInputChange('soilType', soil)}
+          onPress={() => handleInputChange('slope', slope)}
         >
           <Text
             style={[
               styles.optionText,
-              formData.soilType === soil && styles.optionTextActive,
+              formData.slope === slope && styles.optionTextActive,
             ]}
           >
-            {soil}
+            {slope}
           </Text>
         </TouchableOpacity>
       ))}
     </View>
   </View>
 )}
-
 
             {/* Accessibility */}
             <View style={styles.inputGroup}>
