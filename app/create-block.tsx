@@ -187,7 +187,7 @@ export default function CreateBlockScreen() {
           <View style={styles.form}>
             {/* Block Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Block Name *</Text>
+              <Text style={styles.label}>Block Name </Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Block A-1"
@@ -199,7 +199,7 @@ export default function CreateBlockScreen() {
 
             {/* Block Number */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Block Number *</Text>
+              <Text style={styles.label}>Block Number </Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. 1"
@@ -212,7 +212,7 @@ export default function CreateBlockScreen() {
 
             {/* Phase Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phase Name *</Text>
+              <Text style={styles.label}>Phase Name </Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Phase A"
@@ -300,7 +300,7 @@ export default function CreateBlockScreen() {
             {/* Palm Variety */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Palm Variety</Text>
-              <View style={styles.optionList}>
+              <View style={styles.verticalOptionsContainer}>
                 {PALM_VARIETIES.map((variety) => (
                   <TouchableOpacity
                     key={variety}
@@ -370,7 +370,7 @@ export default function CreateBlockScreen() {
             {/* Status */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Status</Text>
-              <View style={styles.optionList}>
+              <View style={styles.verticalOptionsContainer}>
                 {STATUS_OPTIONS.map((status) => (
                   <TouchableOpacity
                     key={status}
@@ -411,31 +411,32 @@ export default function CreateBlockScreen() {
               <Text style={styles.sectionTitle}>🌍 Soil & Terrain</Text>
             </View>
 
-            {/* Soil Type */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Soil Type</Text>
-              <View style={styles.optionList}>
-                {SOIL_TYPES.map((soil) => (
-                  <TouchableOpacity
-                    key={soil}
-                    style={[
-                      styles.optionButton,
-                      formData.soilType === soil && styles.optionButtonActive,
-                    ]}
-                    onPress={() => handleInputChange('soilType', soil)}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        formData.soilType === soil && styles.optionTextActive,
-                      ]}
-                    >
-                      {soil}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            {false && (
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Soil Type</Text>
+    <View style={styles.optionList}>
+      {SOIL_TYPES.map((soil) => (
+        <TouchableOpacity
+          key={soil}
+          style={[
+            styles.optionButton,
+            formData.soilType === soil && styles.optionButtonActive,
+          ]}
+          onPress={() => handleInputChange('soilType', soil)}
+        >
+          <Text
+            style={[
+              styles.optionText,
+              formData.soilType === soil && styles.optionTextActive,
+            ]}
+          >
+            {soil}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+)}
 
             {/* Drainage */}
             <View style={styles.inputGroup}>
@@ -463,36 +464,38 @@ export default function CreateBlockScreen() {
               </View>
             </View>
 
-            {/* Slope */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Slope</Text>
-              <View style={styles.optionList}>
-                {SLOPE_OPTIONS.map((slope) => (
-                  <TouchableOpacity
-                    key={slope}
-                    style={[
-                      styles.optionButton,
-                      formData.slope === slope && styles.optionButtonActive,
-                    ]}
-                    onPress={() => handleInputChange('slope', slope)}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        formData.slope === slope && styles.optionTextActive,
-                      ]}
-                    >
-                      {slope}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            {false && (
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Soil Type</Text>
+    <View style={styles.optionList}>
+      {SOIL_TYPES.map((soil) => (
+        <TouchableOpacity
+          key={soil}
+          style={[
+            styles.optionButton,
+            formData.soilType === soil && styles.optionButtonActive,
+          ]}
+          onPress={() => handleInputChange('soilType', soil)}
+        >
+          <Text
+            style={[
+              styles.optionText,
+              formData.soilType === soil && styles.optionTextActive,
+            ]}
+          >
+            {soil}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+)}
+
 
             {/* Accessibility */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Accessibility</Text>
-              <View style={styles.optionList}>
+              <View style={styles.verticalOptionsContainer}>
                 {ACCESSIBILITY_OPTIONS.map((access) => (
                   <TouchableOpacity
                     key={access}
@@ -684,4 +687,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  verticalOptionsContainer: {
+  flexDirection: 'column',
+  gap: 10,
+},
 });

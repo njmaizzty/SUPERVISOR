@@ -1,19 +1,20 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
-  fetchTasks,
-  fetchRecommendedWorkers,
-  fetchAreas,
-  fetchAssets,
   createTask,
   deleteTask,
-  type Task,
-  type Worker,
+  fetchAreas,
+  fetchAssets,
+  fetchRecommendedWorkers,
+  fetchTasks,
   type Area,
   type Asset,
+  type Task,
+  type Worker,
 } from '@/services/taskService';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,7 +31,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 
 const { width } = Dimensions.get('window');
@@ -79,6 +79,12 @@ const TASK_SUBTYPES: Record<string, string[]> = {
   ],
 };
 
+const BLOCKS = Array.from({ length: 26 }, (_, i) => ({
+  id: i + 1,
+  name: `Block ${String.fromCharCode(65 + i)}`, // A-Z
+}));
+
+
 export default function TasksScreen() {
   const router = useRouter();
 
@@ -106,6 +112,7 @@ export default function TasksScreen() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [recommendedWorkers, setRecommendedWorkers] = useState<Worker[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  
   
   // Date picker states for mobile
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -419,7 +426,7 @@ export default function TasksScreen() {
           <IconSymbol name="magnifyingglass" size={20} color="#666666" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search tasks, workers, or areas"
+            placeholder="Search tasks"
             placeholderTextColor="#999999"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -469,7 +476,12 @@ export default function TasksScreen() {
       {/* Create Task Modal */}
       <Modal visible={showCreateModal} animationType="slide">
         <SafeAreaView style={styles.modalContainer}>
-          <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+          <ScrollView
+  contentContainerStyle={styles.modalContent}
+  keyboardShouldPersistTaps="handled"
+  nestedScrollEnabled
+>
+
             {/* Header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity 
@@ -486,8 +498,8 @@ export default function TasksScreen() {
             </View>
 
             {/* Task Type */}
-            <Text style={styles.label}>Task Type *</Text>
-            <View style={styles.optionsContainer}>
+            <Text style={styles.label}>Task Type </Text>
+            <View style={styles.verticalOptionsContainer}>
               {TASK_TYPES.map(type => (
                 <TouchableOpacity
                   key={type}
@@ -504,8 +516,8 @@ export default function TasksScreen() {
             {/* Task Subtype */}
             {taskType && TASK_SUBTYPES[taskType] && (
               <>
-                <Text style={styles.label}>Task Detail *</Text>
-                <View style={styles.optionsContainer}>
+                <Text style={styles.label}>Task Detail </Text>
+                <View style={styles.verticalOptionsContainer}>
                   {TASK_SUBTYPES[taskType].map(sub => (
                     <TouchableOpacity
                       key={sub}
@@ -600,7 +612,7 @@ export default function TasksScreen() {
             )}
 
             {/* Priority */}
-            <Text style={styles.label}>Priority *</Text>
+            <Text style={styles.label}>Priority </Text>
             <View style={styles.priorityContainer}>
               {(['Low', 'Medium', 'High'] as const).map(p => (
                 <TouchableOpacity
@@ -624,7 +636,7 @@ export default function TasksScreen() {
             </View>
 
             {/* Start Date */}
-            <Text style={styles.label}>Start Date *</Text>
+            <Text style={styles.label}>Start Date </Text>
             {Platform.OS === 'web' ? (
               <View style={styles.dateInputContainer}>
                 <input
@@ -694,7 +706,7 @@ export default function TasksScreen() {
             )}
 
             {/* End Date */}
-            <Text style={styles.label}>End Date *</Text>
+            <Text style={styles.label}>End Date </Text>
             {Platform.OS === 'web' ? (
               <View style={styles.dateInputContainer}>
                 <input
@@ -761,24 +773,41 @@ export default function TasksScreen() {
             )}
 
             {/* Area / Block */}
-            <Text style={styles.label}>Area / Block *</Text>
-            <View style={styles.optionsContainer}>
-              {areas.map(area => (
-                <TouchableOpacity
-                  key={area.id}
-                  style={[styles.optionButton, selectedArea?.id === area.id && styles.optionButtonActive]}
-                  onPress={() => setSelectedArea(area)}
-                >
-                  <Text style={[styles.optionText, selectedArea?.id === area.id && styles.optionTextActive]}>
-                    {area.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.label}>Area / Block </Text>
+
+<View style={styles.blockContainer}>
+  <ScrollView
+  style={{ maxHeight: 200 }}
+  showsVerticalScrollIndicator
+  nestedScrollEnabled
+>
+
+    {BLOCKS.map(block => (
+      <TouchableOpacity
+        key={block.id}
+        style={[
+          styles.blockItem,
+          selectedArea?.id === block.id && styles.blockItemActive,
+        ]}
+        onPress={() => setSelectedArea(block as Area)}
+      >
+        <Text
+          style={[
+            styles.blockText,
+            selectedArea?.id === block.id && styles.blockTextActive,
+          ]}
+        >
+          {block.name}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </ScrollView>
+</View>
+
 
             {/* Asset / Equipment */}
-            <Text style={styles.label}>Asset / Equipment *</Text>
-            <View style={styles.optionsContainer}>
+            <Text style={styles.label}>Asset / Equipment </Text>
+            <View style={styles.verticalOptionsContainer}>
               {assets.map(asset => (
                 <TouchableOpacity
                   key={asset.id}
@@ -1470,4 +1499,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  blockContainer: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  padding: 8,
+},
+
+blockItem: {
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderBottomWidth: 1,
+  borderBottomColor: '#F0F0F0',
+},
+
+blockItemActive: {
+  backgroundColor: '#E8F5E9',
+  borderRadius: 8,
+},
+
+blockText: {
+  fontSize: 15,
+  color: '#333',
+},
+
+blockTextActive: {
+  color: '#2E7D32',
+  fontWeight: '600',
+},
+verticalOptionsContainer: {
+  flexDirection: 'column',
+  gap: 10,
+},
+
 });

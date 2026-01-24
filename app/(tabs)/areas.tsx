@@ -1,15 +1,15 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
-  fetchAreas,
   createArea,
-  updateArea,
   deleteArea,
+  fetchAreas,
+  updateArea,
   type Area,
   type CreateAreaPayload,
 } from '@/services/areaService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -288,7 +288,7 @@ export default function AreasScreen() {
           </View>
 
           {/* Phase Name */}
-          <Text style={styles.label}>Phase Name *</Text>
+          <Text style={styles.label}>Phase Name </Text>
           <TextInput
             style={styles.textInput}
             value={formPhaseName}
@@ -298,7 +298,7 @@ export default function AreasScreen() {
           />
 
           {/* Phase Number */}
-          <Text style={styles.label}>Phase Number *</Text>
+          <Text style={styles.label}>Phase Number </Text>
           <TextInput
             style={styles.textInput}
             value={formPhaseNumber}
@@ -321,7 +321,7 @@ export default function AreasScreen() {
 
           {/* Status */}
           <Text style={styles.label}>Status</Text>
-          <View style={styles.optionsContainer}>
+          <View style={styles.verticalOptionsContainer}>
             {STATUS_OPTIONS.map(status => (
               <TouchableOpacity
                 key={status}
@@ -448,7 +448,8 @@ export default function AreasScreen() {
             <Text style={styles.metricValue}>{item.expectedBlocks}</Text>
             <Text style={styles.metricLabel}>Expected Blocks</Text>
           </View>
-          <View style={styles.metricDivider} />
+
+          {/*<View style={styles.metricDivider} />
           <View style={styles.metricItem}>
             <Text style={styles.metricValue}>{item.actualBlocks || 0}</Text>
             <Text style={styles.metricLabel}>Actual Blocks</Text>
@@ -458,9 +459,10 @@ export default function AreasScreen() {
             <Text style={styles.metricValue}>{item.totalArea?.toFixed(1) || '0'}</Text>
             <Text style={styles.metricLabel}>Hectares</Text>
           </View>
-        </View>
+        </View>*/}
 
-        {item.healthScore !== undefined && item.healthScore > 0 && (
+</View>
+        {/*{item.healthScore !== undefined && item.healthScore > 0 && (
           <View style={styles.healthContainer}>
             <View style={styles.healthBar}>
               <View 
@@ -475,7 +477,7 @@ export default function AreasScreen() {
             </View>
             <Text style={styles.healthText}>{item.healthScore}% Health</Text>
           </View>
-        )}
+        )}*/}
 
         <View style={styles.areaFooter}>
           <Text style={styles.establishedDate}>
@@ -1052,4 +1054,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  verticalOptionsContainer: {
+  flexDirection: 'column',
+  gap: 10,
+},
 });

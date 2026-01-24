@@ -1,15 +1,15 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
-  fetchAssets,
   createAsset,
-  updateAsset,
   deleteAsset,
+  fetchAssets,
+  updateAsset,
   type Asset,
   type CreateAssetPayload,
 } from '@/services/assetService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -51,10 +51,12 @@ const CATEGORY_OPTIONS = [
 ];
 
 // Status options
-const STATUS_OPTIONS = ['Active', 'Maintenance Required', 'Out of Service', 'Reserved'];
+const STATUS_OPTIONS = ['Active', 'Maintenance Required', 'Out of Service'];
 
-// Location options
-const LOCATION_OPTIONS = ['Block A', 'Block B', 'Block C', 'Block D', 'Main Office', 'Storage'];
+const BLOCKS = Array.from({ length: 26 }, (_, i) => ({
+  id: i + 1,
+  name: `Block ${String.fromCharCode(65 + i)}`, // A-Z
+}));
 
 export default function AssetsScreen() {
   const router = useRouter();
@@ -354,7 +356,7 @@ export default function AssetsScreen() {
           </View>
 
           {/* Asset Name */}
-          <Text style={styles.label}>Asset Name *</Text>
+          <Text style={styles.label}>Asset Name </Text>
           <TextInput
             style={styles.textInput}
             value={formAssetName}
@@ -364,7 +366,7 @@ export default function AssetsScreen() {
           />
 
           {/* Asset ID */}
-          <Text style={styles.label}>Asset ID *</Text>
+          <Text style={styles.label}>Asset ID </Text>
           <View style={styles.inputRow}>
             <TextInput
               style={[styles.textInput, { flex: 1 }]}
@@ -382,7 +384,7 @@ export default function AssetsScreen() {
 
           {/* Asset Type */}
           <Text style={styles.label}>Asset Type</Text>
-          <View style={styles.optionsContainer}>
+          <View style={styles.verticalOptionsContainer}>
             {ASSET_TYPE_OPTIONS.map(type => (
               <TouchableOpacity
                 key={type}
@@ -404,7 +406,7 @@ export default function AssetsScreen() {
 
           {/* Category */}
           <Text style={styles.label}>Category</Text>
-          <View style={styles.optionsContainer}>
+          <View style={styles.verticalOptionsContainer}>
             {CATEGORY_OPTIONS.map(cat => (
               <TouchableOpacity
                 key={cat}
@@ -426,7 +428,7 @@ export default function AssetsScreen() {
 
           {/* Status */}
           <Text style={styles.label}>Status</Text>
-          <View style={styles.optionsContainer}>
+          <View style={styles.verticalOptionsContainer}>
             {STATUS_OPTIONS.map(status => (
               <TouchableOpacity
                 key={status}
@@ -497,26 +499,34 @@ export default function AssetsScreen() {
           </View>
 
           {/* Location */}
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.optionsContainer}>
-            {LOCATION_OPTIONS.map(loc => (
-              <TouchableOpacity
-                key={loc}
-                style={[
-                  styles.optionButton,
-                  formLocation === loc && styles.optionButtonActive
-                ]}
-                onPress={() => setFormLocation(loc)}
-              >
-                <Text style={[
-                  styles.optionText,
-                  formLocation === loc && styles.optionTextActive
-                ]}>
-                  {loc}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={styles.label}>Location </Text>
+          <View style={styles.blockContainer}>
+  <ScrollView 
+    style={{ maxHeight: 200 }}
+    showsVerticalScrollIndicator={true}
+    nestedScrollEnabled
+  >
+    {BLOCKS.map(block => (
+      <TouchableOpacity
+        key={block.id}
+        style={[
+          styles.blockItem,
+          formLocation === block.name && styles.blockItemActive,
+        ]}
+        onPress={() => setFormLocation(block.name)}
+      >
+        <Text
+          style={[
+            styles.blockText,
+            formLocation === block.name && styles.blockTextActive,
+          ]}
+        >
+          {block.name}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </ScrollView>
+</View>
 
           {/* Purchase Date */}
           <Text style={styles.label}>Purchase Date</Text>
@@ -1182,4 +1192,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  verticalOptionsContainer: {
+  flexDirection: 'column',
+  gap: 10,
+},
+blockContainer: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  padding: 8,
+},
+
+blockItem: {
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderBottomWidth: 1,
+  borderBottomColor: '#F0F0F0',
+},
+
+blockItemActive: {
+  backgroundColor: '#E8F5E9',
+  borderRadius: 8,
+},
+
+blockText: {
+  fontSize: 15,
+  color: '#333',
+},
+
+blockTextActive: {
+  color: '#2E7D32',
+  fontWeight: '600',
+},
+
 });

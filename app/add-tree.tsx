@@ -215,7 +215,7 @@ export default function AddTreeScreen() {
 
             {/* Tree Number */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tree Number *</Text>
+              <Text style={styles.label}>Tree Number </Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. T001"
@@ -227,7 +227,7 @@ export default function AddTreeScreen() {
 
             {/* Block */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Block *</Text>
+              <Text style={styles.label}>Block </Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Block A-1"

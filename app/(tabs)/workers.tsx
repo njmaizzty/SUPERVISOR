@@ -1,15 +1,15 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
-  fetchWorkers,
   createWorker,
-  updateWorker,
   deleteWorker,
-  type Worker,
+  fetchWorkers,
+  updateWorker,
   type CreateWorkerPayload,
+  type Worker,
 } from '@/services/workerService';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,16 +45,17 @@ const SKILL_OPTIONS = [
 
 // Position options
 const POSITION_OPTIONS = [
-  'Field Worker',
-  'Technician',
-  'Supervisor',
-  'Driver',
-  'Security',
-  'Gardener',
+  'General Worker',
+  'Harvester',
+  'Loose Fruit Collector',
+  'Pruner',
+  'Weeding Worker',
+  'Fertilizer Worker',
+  'Sprayer',
 ];
 
 // Location options
-const LOCATION_OPTIONS = ['Block A', 'Block B', 'Block C', 'Block D', 'Main Office'];
+const BLOCKS = Array.from({ length: 26 }, (_, i) => `Block ${String.fromCharCode(65 + i)}`); // Block A-Z
 
 export default function WorkersScreen() {
   const router = useRouter();
@@ -334,7 +335,7 @@ export default function WorkersScreen() {
           </View>
 
           {/* Name */}
-          <Text style={styles.label}>Worker Name *</Text>
+          <Text style={styles.label}>Worker Name </Text>
           <TextInput
             style={styles.textInput}
             value={formName}
@@ -344,7 +345,7 @@ export default function WorkersScreen() {
           />
 
           {/* Email */}
-          <Text style={styles.label}>Email *</Text>
+          <Text style={styles.label}>Email </Text>
           <TextInput
             style={styles.textInput}
             value={formEmail}
@@ -368,7 +369,7 @@ export default function WorkersScreen() {
 
           {/* Position */}
           <Text style={styles.label}>Position</Text>
-          <View style={styles.optionsContainer}>
+          <View style={styles.verticalOptionsContainer}>
             {POSITION_OPTIONS.map(pos => (
               <TouchableOpacity
                 key={pos}
@@ -390,7 +391,7 @@ export default function WorkersScreen() {
 
           {/* Skills */}
           <Text style={styles.label}>Skills</Text>
-          <View style={styles.optionsContainer}>
+          <View style={styles.verticalOptionsContainer}>
             {SKILL_OPTIONS.map(skill => (
               <TouchableOpacity
                 key={skill}
@@ -414,26 +415,36 @@ export default function WorkersScreen() {
           </View>
 
           {/* Location */}
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.optionsContainer}>
-            {LOCATION_OPTIONS.map(loc => (
-              <TouchableOpacity
-                key={loc}
-                style={[
-                  styles.optionButton,
-                  formLocation === loc && styles.optionButtonActive
-                ]}
-                onPress={() => setFormLocation(loc)}
-              >
-                <Text style={[
-                  styles.optionText,
-                  formLocation === loc && styles.optionTextActive
-                ]}>
-                  {loc}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                
+<Text style={styles.label}>Location</Text>
+<View style={styles.blockContainer}>
+  <ScrollView
+    style={{ maxHeight: 200 }}
+    showsVerticalScrollIndicator={true}
+    nestedScrollEnabled
+  >
+    {BLOCKS.map((block) => (
+      <TouchableOpacity
+        key={block}
+        style={[
+          styles.blockItem,
+          formLocation === block && styles.blockItemActive,
+        ]}
+        onPress={() => setFormLocation(block)}
+      >
+        <Text
+          style={[
+            styles.blockText,
+            formLocation === block && styles.blockTextActive,
+          ]}
+        >
+          {block}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </ScrollView>
+</View>
+
 
           {/* Remarks */}
           <Text style={styles.label}>Remarks</Text>
@@ -1118,4 +1129,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  verticalOptionsContainer: {
+  flexDirection: 'column',
+  gap: 10,
+},
+blockContainer: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  padding: 8,
+},
+
+blockItem: {
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderBottomWidth: 1,
+  borderBottomColor: '#F0F0F0',
+},
+
+blockItemActive: {
+  backgroundColor: '#E8F5E9',
+  borderRadius: 8,
+},
+
+blockText: {
+  fontSize: 15,
+  color: '#333',
+},
+
+blockTextActive: {
+  color: '#2E7D32',
+  fontWeight: '600',
+},
 });
