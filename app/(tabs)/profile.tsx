@@ -462,6 +462,7 @@ const renderPrivacyModal = () => (
         status: user?.status,
       };
 
+
       // Try API update
       if (token) {
         try {

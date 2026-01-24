@@ -37,8 +37,9 @@ export default function DashboardScreen() {
             <View style={styles.userInfo}>
               <Text style={styles.greeting}>{getGreeting()},</Text>
               <Text style={styles.userName}>
-                {user?.name || "Supervisor"}
-              </Text>
+  {user?.fullName || user?.name || "Supervisor"}
+</Text>
+
               <Text style={styles.userRole}>Farm Supervisor</Text>
             </View>
 

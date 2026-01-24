@@ -22,27 +22,29 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
 
-  const { login, isLoading, isAuthenticated } = useAuth();
+  const { login, isLoading } = useAuth(); // no automatic isAuthenticated redirect
   const router = useRouter();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/(tabs)');
-    }
-  }, [isAuthenticated]);
-
+  // Check form validity
   useEffect(() => {
     setIsFormValid(username.trim().length > 0 && password.length >= 1);
   }, [username, password]);
 
   const handleLogin = async () => {
     if (!isFormValid) return;
+
+    // Call login from AuthContext
     const result = await login({ username: username.trim(), password });
-    if (!result.success) {
+
+    if (result.success) {
+      // Only navigate after successful login
+      router.replace('/(tabs)');
+    } else {
+      // Show error if login fails
       if (Platform.OS === 'web') {
-        window.alert(result.message || 'Invalid credentials');
+        window.alert(result.message || 'Invalid username or password');
       } else {
-        Alert.alert('Login Failed', result.message || 'Invalid credentials');
+        Alert.alert('Login Failed', result.message || 'Invalid username or password');
       }
     }
   };
@@ -81,8 +83,8 @@ export default function LoginScreen() {
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity 
-            style={[styles.loginBtn, !isFormValid && styles.loginBtnDisabled]}
+          <TouchableOpacity
+            style={[styles.loginBtn, (!isFormValid || isLoading) && styles.loginBtnDisabled]}
             onPress={handleLogin}
             disabled={!isFormValid || isLoading}
           >
@@ -95,8 +97,8 @@ export default function LoginScreen() {
         </View>
 
         {/* Footer */}
-        <TouchableOpacity 
-          style={styles.footer} 
+        <TouchableOpacity
+          style={styles.footer}
           onPress={() => router.push('/signup')}
         >
           <Text style={styles.footerText}>
